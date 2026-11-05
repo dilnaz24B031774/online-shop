@@ -1,0 +1,94 @@
+erDiagram
+    USERS ||--o{ ADDRESSES : "saves"
+    USERS ||--o{ ORDERS : "places"
+    USERS ||--o{ CART_ITEMS : "has in cart"
+    USERS ||--o{ REVIEWS : "writes"
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    CATEGORIES ||--o{ PRODUCTS : "contains"
+    PRODUCTS ||--o{ CART_ITEMS : "is in"
+    PRODUCTS ||--o{ ORDER_ITEMS : "is sold in"
+    PRODUCTS ||--o{ REVIEWS : "gets"
+    ORDERS ||--|{ ORDER_ITEMS : "contains"
+    ORDERS ||--|| PAYMENTS : "is paid by"
+    ORDERS |o--o{ NOTIFICATIONS : "about"
+
+    USERS {
+        bigint id PK
+        varchar username UK
+        varchar email UK
+        varchar password "hash only"
+        varchar phone
+        varchar role "customer|manager|admin"
+        varchar preferred_language "en|ru|kk"
+        boolean is_active
+    }
+    ADDRESSES {
+        bigint id PK
+        bigint user_id FK
+        varchar label
+        varchar city
+        varchar street
+        boolean is_default "1 per user"
+    }
+    CATEGORIES {
+        bigint id PK
+        varchar name_en UK
+        varchar name_ru
+        varchar name_kk
+        boolean is_active
+    }
+    PRODUCTS {
+        bigint id PK
+        bigint category_id FK
+        varchar sku UK
+        varchar name_en
+        varchar name_ru
+        varchar name_kk
+        numeric price "> 0"
+        int stock_quantity ">= 0"
+        boolean is_active
+    }
+    CART_ITEMS {
+        bigint id PK
+        bigint user_id FK
+        bigint product_id FK
+        int quantity "> 0"
+    }
+    ORDERS {
+        bigint id PK
+        bigint user_id FK
+        varchar status
+        varchar shipping_address "copied"
+        numeric total_amount ">= 0"
+        timestamp created_at
+    }
+    ORDER_ITEMS {
+        bigint id PK
+        bigint order_id FK
+        bigint product_id FK
+        int quantity "> 0"
+        numeric unit_price "price at purchase"
+    }
+    PAYMENTS {
+        bigint id PK
+        bigint order_id FK,UK
+        varchar method
+        numeric amount "> 0"
+        varchar status
+        varchar provider_reference "no card data"
+        timestamp paid_at
+    }
+    REVIEWS {
+        bigint id PK
+        bigint user_id FK
+        bigint product_id FK
+        smallint rating "1..5"
+        text comment
+    }
+    NOTIFICATIONS {
+        bigint id PK
+        bigint user_id FK
+        bigint order_id FK
+        varchar message
+        boolean is_read
+    }
