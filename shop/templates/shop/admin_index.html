@@ -1,0 +1,7 @@
+{% extends "admin/index.html" %}
+{% block content %}
+  {% if perms.shop.view_product or perms.shop.change_product %}
+    <p><a href="{% url 'staff_catalog' %}">Sauda · Управление каталогом</a></p>
+  {% endif %}
+  {{ block.super }}
+{% endblock %}

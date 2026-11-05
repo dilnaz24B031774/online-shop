@@ -18,7 +18,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from shop import staff
+
+admin.site.index_template = "shop/admin_index.html"
+
+
 urlpatterns = [
+    path("staff/catalog/", admin.site.admin_view(staff.catalog), name="staff_catalog"),
+    path("staff/catalog/add/", admin.site.admin_view(staff.product_form), name="staff_product_add"),
+    path("staff/catalog/<int:pk>/", admin.site.admin_view(staff.product_form), name="staff_product_edit"),
     path("admin/", admin.site.urls),
     path("api/", include("shop.urls")),
 ]
