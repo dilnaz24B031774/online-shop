@@ -299,3 +299,33 @@ class Notification(models.Model):
         db_table = "notifications"
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["user", "is_read"], name="notification_user_unread_idx")]
+
+
+class LoginSecurityState(models.Model):
+    """Expiring counters; the key is an HMAC, never an account name or IP."""
+
+    key = models.CharField(max_length=64, primary_key=True)
+    scope = models.CharField(max_length=20)
+    attempts = models.PositiveIntegerField(default=0)
+    window_started_at = models.DateTimeField()
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        db_table = "login_security_state"
+        verbose_name = "защита входа"
+        verbose_name_plural = "защита входа"
+
+
+class LoginChallenge(models.Model):
+    """A short-lived, single-use answer digest bound to one source and purpose."""
+
+    id = models.CharField(max_length=64, primary_key=True)
+    source_key = models.CharField(max_length=64)
+    purpose = models.CharField(max_length=20)
+    answer_digest = models.CharField(max_length=64)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "login_challenges"

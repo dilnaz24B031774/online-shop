@@ -1,0 +1,24 @@
+html[data-theme="light"],:root { --primary:#155a45; --secondary:#103d31; --accent:#f5bd63; --header-color:#f5bd63; --header-branding-color:#fff; --header-bg:#103d31; --body-bg:#f5f7f2; --body-fg:#20372f; --link-fg:#155a45; --link-selected-fg:#103d31; --button-bg:#155a45; --button-hover-bg:#103d31; --default-button-bg:#155a45; --default-button-hover-bg:#103d31; --breadcrumbs-bg:#e4ece1; --breadcrumbs-fg:#526b5c; --breadcrumbs-link-fg:#155a45; --selected-bg:#e9f0e5; --selected-row:#f2f6ef; --border-color:#dce5d9; --hairline-color:#e4eae1; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+#header { padding:20px 35px; gap:16px; flex-wrap:wrap; }
+#site-name { font-size:27px; font-weight:750; letter-spacing:-.7px; margin:0; }
+.sauda-dot { color:#f5bd63; } .sauda-admin-label { font-size:12px; letter-spacing:0; font-weight:400; margin-left:10px; color:#b5ccbd; }
+.sauda-home { font-size:12px; white-space:nowrap; } .module { border-radius:8px; overflow:hidden; } div.breadcrumbs { padding:13px 35px; }
+.submit-row { border-radius:8px; } input[type=submit],.button,a.button { border-radius:6px; }
+.sauda-welcome { padding:24px; background:var(--header-bg); border-radius:10px; margin-bottom:24px; color:white; }
+.sauda-welcome h2 { color:white; font-size:22px; margin:0 0 8px; background:none; padding:0; text-transform:none; letter-spacing:0; }
+.sauda-welcome p { color:#c3d7c9; margin:0 0 18px; font-size:13px; }
+.sauda-welcome a { display:inline-block; background:#f5bd63; color:#103d31; padding:10px 16px; border-radius:6px; font-size:13px; font-weight:650; }
+body.login { background:#f5f7f2; } .login #container { border:1px solid #dce5d9; border-radius:13px; box-shadow:0 15px 65px #143e3010; overflow:hidden; }
+.login #header { justify-content:center; padding:25px 18px; } .login #site-name a { color:white; } .login .sauda-admin-label { display:block; margin:6px 0 0; } .login #content { padding:25px; } .login .submit-row { padding-top:12px; }
+.sauda-login-intro { color:var(--body-quiet-color); font-size:13px; margin:0 0 18px; }
+.sauda-security-note { color:var(--body-quiet-color); font-size:11px; line-height:1.5; margin-top:20px; }
+.sauda-honeypot { position:absolute; width:1px; height:1px; overflow:hidden; left:-10000px; }
+.sauda-challenge { background:var(--selected-bg); border:1px solid var(--border-color); padding:15px; border-radius:8px; margin:16px 0; }
+.sauda-challenge strong { font-size:13px; }.sauda-challenge p { font-size:17px; margin:10px 0; }
+.sauda-challenge label,.sauda-challenge small { display:block; margin:8px 0; font-size:11px; }
+.sauda-challenge input[type=text] { width:100%; box-sizing:border-box; padding:9px; }
+.sauda-challenge button { background:none; border:0; color:var(--link-fg); text-decoration:underline; padding:5px 0; cursor:pointer; font-size:12px; }
+.sauda-lockout { padding:12px; background:var(--message-warning-bg); border-radius:6px; font-size:12px; }
+.login input[type=submit]:disabled { opacity:.55; cursor:wait; }
+@media(max-width:767px) { #header { padding:18px; } #site-name { font-size:23px; } .sauda-admin-label { display:none; } div.breadcrumbs { padding:12px 18px; } .sauda-welcome { padding:20px; } }

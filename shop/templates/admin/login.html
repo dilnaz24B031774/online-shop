@@ -1,0 +1,32 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'admin/css/login.css' %}">{{ form.media }}{% endblock %}
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+{% block usertools %}{% endblock %}{% block nav-global %}{% endblock %}{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}{% block nav-breadcrumbs %}{% endblock %}
+{% block content %}
+{% for error in form.non_field_errors %}<p class="errornote" role="alert">{{ error }}</p>{% endfor %}
+<div id="content-main">
+  <p class="sauda-login-intro">Войдите как администратор или менеджер магазина.</p>
+  {% if user.is_authenticated %}<p class="errornote">У текущей учётной записи нет доступа. Используйте учётную запись сотрудника.</p>{% endif %}
+  <form action="{{ app_path }}" method="post" id="login-form">{% csrf_token %}
+    <div class="form-row">{{ form.username.errors }}{{ form.username.label_tag }}{{ form.username }}</div>
+    <div class="form-row">{{ form.password.errors }}{{ form.password.label_tag }}{{ form.password }}</div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="sauda-honeypot" aria-hidden="true"><label for="id_website">Website</label><input type="text" name="website" id="id_website" tabindex="-1" autocomplete="off"></div>
+    {% if form.challenge_required %}
+      {% with check=form.bot_challenge %}
+      <div class="sauda-challenge">
+        <strong>Проверка перед входом</strong>
+        {% if check %}<p id="challenge-prompt">{{ check.prompt }}</p><input type="hidden" name="challenge_id" value="{{ check.id }}"><label for="id_challenge_answer">{{ form.challenge_answer.label }}</label><input type="text" name="challenge_answer" id="id_challenge_answer" maxlength="3" inputmode="numeric" autocomplete="off" aria-describedby="challenge-prompt" required>{{ form.challenge_answer.errors }}<small>Пример действует 2 минуты и используется один раз.</small><button type="button" id="refresh-challenge">Другой пример</button><small id="challenge-feedback" role="status"></small>
+        {% else %}<p>{{ form.challenge_error }}</p>{% endif %}
+      </div>
+      {% endwith %}
+    {% endif %}
+    {% if form.retry_after %}<p class="sauda-lockout" role="status" data-login-cooldown="{{ form.retry_after }}">Повторный вход через <strong id="login-countdown">{{ form.retry_after }}</strong> сек.</p>{% endif %}
+    <p class="sauda-security-note">После 5 неудачных попыток вход с вашего адреса блокируется на 5 минут.</p>
+    <div class="submit-row"><input id="login-submit" type="submit" value="Войти" {% if form.retry_after %}disabled{% endif %}></div>
+  </form>
+</div>
+<script src="{% static 'shop/login.js' %}" defer></script>
+{% endblock %}

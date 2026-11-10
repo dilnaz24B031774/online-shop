@@ -1,0 +1,1 @@
+<span class="badge {{ status }}">{% if status == 'pending' %}Ожидает оплаты{% elif status == 'paid' %}Оплачен{% elif status == 'shipped' %}В пути{% elif status == 'delivered' %}Доставлен{% elif status == 'cancelled' %}Отменён{% elif status == 'refunded' %}Возврат оформлен{% elif status == 'failed' %}Не оплачен{% else %}{{ status }}{% endif %}</span>

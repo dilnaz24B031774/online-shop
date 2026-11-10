@@ -1,7 +1,7 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import api
+from . import api, auth_views
 
 urlpatterns = [
     # catalogue (open for everyone)
@@ -15,7 +15,8 @@ urlpatterns = [
 
     # accounts and JWT tokens
     path("auth/register/", api.register),
-    path("auth/login/", TokenObtainPairView.as_view()),     # {username, password} -> tokens
+    path("auth/login/", auth_views.login),
+    path("auth/challenge/", auth_views.challenge),
     path("auth/refresh/", TokenRefreshView.as_view()),      # {refresh} -> new access token
     path("me/", api.me),
     path("addresses/", api.addresses),

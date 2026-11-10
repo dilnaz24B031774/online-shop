@@ -47,6 +47,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "shop.middleware.StaffLanguageMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -59,7 +60,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "shop" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -169,3 +170,14 @@ SIMPLE_JWT = {
 
 # The Angular dev server runs on port 4200
 CORS_ALLOWED_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
+CORS_EXPOSE_HEADERS = ["Retry-After"]
+
+# Shared by the storefront login and the employee/admin login.
+LOGIN_MAX_FAILURES = 5
+LOGIN_FAILURE_WINDOW_SECONDS = 300
+LOGIN_LOCKOUT_SECONDS = 300
+LOGIN_IP_MAX_FAILURES = 20
+LOGIN_CHALLENGE_AFTER = 3
+LOGIN_IP_CHALLENGE_AFTER = 10
+LOGIN_CHALLENGE_TTL_SECONDS = 120
+CHALLENGE_MAX_ISSUED_PER_MINUTE = 20

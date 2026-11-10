@@ -1,7 +1,9 @@
 {% extends "admin/index.html" %}
 {% block content %}
-  {% if perms.shop.view_product or perms.shop.change_product %}
-    <p><a href="{% url 'staff_catalog' %}">Sauda · Управление каталогом</a></p>
-  {% endif %}
+  <div class="sauda-welcome">
+    <h2>Ваш магазин — в ваших руках</h2>
+    <p>Товары, категории, заказы и покупатели доступны в удобной панели. Ниже — дополнительные разделы и настройки.</p>
+    <a href="{% url 'staff_dashboard' %}">Открыть панель управления →</a>
+  </div>
   {{ block.super }}
 {% endblock %}

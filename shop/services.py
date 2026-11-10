@@ -27,6 +27,29 @@ class CancelNotAllowedError(Exception):
     """Raised when an order can no longer be cancelled (already shipped, delivered or cancelled)."""
 
 
+class OrderTransitionError(Exception):
+    """Raised when fulfillment would skip or reverse an order state."""
+
+
+@transaction.atomic
+def fulfill_order(order: Order, target_status: str) -> Order:
+    """Advance fulfillment once; the lock serializes cancellation and shipping."""
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    transitions = {
+        Order.Status.SHIPPED: Order.Status.PAID,
+        Order.Status.DELIVERED: Order.Status.SHIPPED,
+    }
+    if target_status not in transitions or order.status != transitions[target_status]:
+        raise OrderTransitionError("The order cannot move to that status.")
+    order.status = target_status
+    order.save(update_fields=["status", "updated_at"])
+    Notification.objects.create(
+        user=order.user, order=order,
+        message=f"Order #{order.pk} is {target_status}.",
+    )
+    return order
+
+
 # ---------------------------------------------------------------------
 # CHECKOUT - all steps succeed together or all are cancelled (ROLLBACK)
 # ---------------------------------------------------------------------

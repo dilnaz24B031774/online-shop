@@ -9,11 +9,31 @@ import {
 /** Address of the Django backend. Change it if the backend runs elsewhere. */
 export const API_URL = 'http://127.0.0.1:8000/api';
 
+export interface LoginProof {
+  challenge_id?: string;
+  challenge_answer?: string;
+  website?: string;
+}
+
+export interface LoginChallenge {
+  id: string;
+  prompt: string;
+  expires_in: number;
+}
+
+export interface LoginFailure {
+  code?: string;
+  detail?: string;
+  remaining_attempts?: number;
+  challenge_required?: boolean;
+  retry_after?: number;
+}
+
 /** Every request to the backend goes through this service. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private http = inject(HttpClient);
-
+ 
   // catalogue
   categories(): Observable<Category[]> {
     return this.http.get<Category[]>(`${API_URL}/categories/`);
@@ -42,8 +62,12 @@ export class ApiService {
   }
 
   // accounts
-  login(username: string, password: string): Observable<Tokens> {
-    return this.http.post<Tokens>(`${API_URL}/auth/login/`, { username, password });
+  login(username: string, password: string, proof: LoginProof = {}): Observable<Tokens> {
+    return this.http.post<Tokens>(`${API_URL}/auth/login/`, { username, password, ...proof });
+  }
+
+  securityChallenge(): Observable<LoginChallenge> {
+    return this.http.get<LoginChallenge>(`${API_URL}/auth/challenge/`, { params: { purpose: 'login' } });
   }
 
   register(data: { username: string; email: string; password: string; first_name?: string }) {
