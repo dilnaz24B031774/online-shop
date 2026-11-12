@@ -10,6 +10,8 @@ from django.test import TestCase
 from .models import Address, CartItem, Category, Order, OrderItem, Payment, Product, Review, User
 from .services import OutOfStockError, best_sellers, place_order, search
 
+TEST_CARD = {"number": "4242 4242 4242 4242", "holder": "AIGERIM K", "exp_month": 12, "exp_year": 2030, "cvc": "123"}
+
 
 class ShopDatabaseTests(TestCase):
 
@@ -187,7 +189,7 @@ class ApiFlowTests(TestCase):
         self.assertEqual(c.post("/api/cart/", {"product_id": self.mouse.id, "quantity": 7},
                                 format="json").status_code, 400)          # more than stock
         c.post("/api/cart/", {"product_id": self.mouse.id, "quantity": 2}, format="json")
-        r = c.post("/api/checkout/", {"address_id": addr["id"], "method": "card"}, format="json")
+        r = c.post("/api/checkout/", {"address_id": addr["id"], "method": "card", "card": TEST_CARD}, format="json")
         self.assertEqual(r.status_code, 201)
         self.assertEqual(r.json()["total_amount"], "50.00")
         self.assertEqual(len(c.get("/api/orders/").json()), 1)
@@ -288,3 +290,54 @@ class AssistantTests(TestCase):
         r = APIClient().post("/api/assistant/", {"message": "Where is my order?", "lang": "en"}, format="json")
         self.assertEqual(r.status_code, 200)
         self.assertIn("sign in", r.json()["text"].lower())
+
+
+class NotificationTests(TestCase):
+    """Black Friday broadcast and the notifications API."""
+
+    def setUp(self):
+        self.aigerim = User.objects.create_user("aigerim", "a@ex.com", "Shop2026!")
+        self.dana = User.objects.create_user("dana", "d@ex.com", "Shop2026!")
+        self.manager = User.objects.create_user("manager", "m@ex.com", "Shop2026!", role="manager")
+
+    def test_black_friday_goes_to_every_customer_only(self):
+        from .services import send_black_friday
+        self.assertEqual(send_black_friday(), 2)                       # 2 customers, not the manager
+        n = self.aigerim.notifications.get()
+        self.assertEqual(n.kind, "promo")
+        self.assertIn("27", n.message_ru)
+        self.assertEqual(n.link, "/catalog")
+        self.assertFalse(self.manager.notifications.exists())
+
+    def test_api_lists_only_own_notifications_with_unread_count(self):
+        from rest_framework.test import APIClient
+        from .services import send_black_friday
+        from .models import Notification
+        send_black_friday()
+        Notification.objects.create(user=self.dana, message="Order #1 is paid.")
+        c = APIClient()
+        c.force_authenticate(self.aigerim)
+        data = c.get("/api/notifications/").json()
+        self.assertEqual(data["unread"], 1)
+        self.assertEqual(len(data["items"]), 1)
+
+    def test_mark_read_and_read_all(self):
+        from rest_framework.test import APIClient
+        from .services import send_black_friday
+        from .models import Notification
+        send_black_friday()
+        Notification.objects.create(user=self.aigerim, message="Order #1 is paid.")
+        c = APIClient()
+        c.force_authenticate(self.aigerim)
+        first = c.get("/api/notifications/").json()["items"][0]["id"]
+        self.assertEqual(c.post(f"/api/notifications/{first}/read/").status_code, 200)
+        self.assertEqual(c.get("/api/notifications/").json()["unread"], 1)
+        c.post("/api/notifications/read-all/")
+        self.assertEqual(c.get("/api/notifications/").json()["unread"], 0)
+        # someone else's notification cannot be marked
+        other = Notification.objects.create(user=self.dana, message="x")
+        self.assertEqual(c.post(f"/api/notifications/{other.id}/read/").status_code, 404)
+
+    def test_notifications_need_login(self):
+        from rest_framework.test import APIClient
+        self.assertEqual(APIClient().get("/api/notifications/").status_code, 401)

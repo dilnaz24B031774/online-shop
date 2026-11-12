@@ -43,8 +43,8 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
             <small class="hint">{{ i.t('auth.rules') }}</small>
           </div>
           <button class="btn btn-primary btn-block" type="submit"
-                  [disabled]="busy() || !form.username || !form.email || !form.password">{{ i.t('auth.register') }}</button>
-          <p class="switch">{{ i.t('auth.haveAccount') }} <a routerLink="/login" [queryParams]="{ returnUrl: returnUrl() }">{{ i.t('auth.login') }}</a></p>
+                  [disabled]="busy()">{{ i.t('auth.register') }}</button>
+          <p class="switch">{{ i.t('auth.haveAccount') }} <a routerLink="/login" [queryParams]="{ returnUrl: returnUrl() || '/' }">{{ i.t('auth.login') }}</a></p>
         </form>
       </div>
     </div>
@@ -72,6 +72,10 @@ export class RegisterComponent {
   readonly errors = signal<string[]>([]);
 
   submit() {
+    if (!this.form.username.trim() || !this.form.email.trim() || !this.form.password) {
+      this.errors.set([this.i.t('auth.fillFields')]);
+      return;
+    }
     this.busy.set(true);
     this.errors.set([]);
     this.auth.register(this.form).subscribe({

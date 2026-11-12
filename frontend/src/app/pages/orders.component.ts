@@ -44,10 +44,18 @@ import { Order } from '../core/models';
 
             <footer>
               <span class="muted">{{ i.t('orders.payment') }}: {{ o.payment_method ? i.t('pay.' + o.payment_method) : '–' }}
-                @if (o.payment_status) { ({{ i.t('status.' + o.payment_status) }}) }</span>
+                @if (o.card_last4) { · {{ o.card_brand?.toUpperCase() }} •••• {{ o.card_last4 }} }
+                @if (o.installment_months) { · 0-0-{{ o.installment_months }} }
+                @if (o.payment_status) { <span class="pay-badge" [class]="'pay-badge p-' + o.payment_status">{{ i.t('status.' + o.payment_status) }}</span> }</span>
               <strong class="sum">\${{ o.total_amount }}</strong>
             </footer>
 
+            @if (o.payment_method === 'qr' && o.payment_status === 'pending') {
+              <div class="qr-row">
+                <span>{{ i.t('qr.waiting') }}</span>
+                <button type="button" class="btn btn-primary" (click)="payQr(o)" [disabled]="busy()">{{ i.t('qr.paid') }}</button>
+              </div>
+            }
             @if (o.status === 'paid' || o.status === 'pending') {
               @if (confirmId() === o.id) {
                 <div class="confirm" role="alert">
@@ -79,6 +87,10 @@ import { Order } from '../core/models';
     </div>
   `,
   styles: [`
+    .qr-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--amber-50, #fff7e6); border-radius: 12px; padding: .7rem 1rem; margin-top: .8rem; font-weight: 600; }
+    .pay-badge { display: inline-block; margin-left: .3rem; padding: .05em .55em; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eef2ed; color: #5a6d61; }
+    .p-paid { background: #e7f3e9; color: #267247; } .p-pending { background: #fff3dc; color: #956111; }
+    .p-failed { background: #fbecea; color: #aa4942; } .p-refunded { background: #e8eff9; color: #466b9b; }
     .order { margin-bottom: 1.2rem; }
     header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
     h2 { font-size: 1.25rem; margin-bottom: .2rem; }
@@ -127,6 +139,17 @@ export class OrdersComponent implements OnInit {
 
   ngOnInit() {
     this.api.orders().subscribe({ next: o => this.orders.set(o), error: () => this.error.set(true) });
+  }
+
+  payQr(o: Order) {
+    this.busy.set(true);
+    this.api.payQr(o.id).subscribe({
+      next: updated => {
+        this.orders.update(list => (list ?? []).map(x => (x.id === updated.id ? updated : x)));
+        this.busy.set(false);
+      },
+      error: e => { this.failMsg.set(e.error?.detail ?? this.i.t('common.error')); this.busy.set(false); },
+    });
   }
 
   cancel(o: Order) {

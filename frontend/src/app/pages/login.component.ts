@@ -75,11 +75,14 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
           }
 
           <button class="btn btn-primary btn-block" type="submit"
-                  [disabled]="busy() || cooldownSeconds() > 0 || challengeLoading() || !username.trim() || !password || (challengeRequired() && (!challenge() || !challengeAnswer.trim()))">
+                  [disabled]="busy() || cooldownSeconds() > 0 || challengeLoading()">
             {{ i.t(busy() ? 'common.loading' : 'auth.login') }}
           </button>
 
-          <p class="switch">{{ i.t('auth.noAccount') }} <a routerLink="/register" [queryParams]="{ returnUrl: safeReturnUrl() }">{{ i.t('auth.register') }}</a></p>
+          <div class="switch">
+            <span>{{ i.t('auth.noAccount') }}</span>
+            <a class="btn btn-ghost btn-block" routerLink="/register" [queryParams]="{ returnUrl: safeReturnUrl() }">{{ i.t('auth.register') }}</a>
+          </div>
           <p class="security-note muted">{{ i.t('auth.loginProtection') }}</p>
         </form>
       </div>
@@ -91,7 +94,9 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
     .side app-auth-aside { position: absolute; inset: 0; }
     .form { padding: 2.4rem; min-width: 0; position: relative; }
     h1 { font-size: 2rem; }
-    .switch { margin-top: 1.2rem; }
+    .switch { margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem; align-items: center; color: var(--ink-soft); font-size: .9rem; }
+    .switch .btn { text-decoration: none; display: block; text-align: center; border: 1.5px solid var(--green-700); color: var(--green-700); }
+    .switch .btn:hover { background: var(--green-50); }
     .security-note { font-size: .82rem; border-top: 1px solid var(--line); padding-top: 1rem; margin-bottom: 0; }
     .password-field { position: relative; }
     .password-field input { padding-right: 6.7rem; }
@@ -144,7 +149,7 @@ export class LoginComponent {
   }
 
   safeReturnUrl(): string {
-    const value = this.returnUrl();
+    const value = this.returnUrl() || '/';   // no ?returnUrl= in the address -> undefined
     return value.startsWith('/') && !value.startsWith('//') && !value.includes('\\') && !/[\r\n]/.test(value) ? value : '/';
   }
 
@@ -178,7 +183,8 @@ export class LoginComponent {
   }
 
   submit() {
-    if (this.busy() || this.challengeLoading() || this.cooldownSeconds() > 0 || !this.username.trim() || !this.password) return;
+    if (this.busy() || this.challengeLoading() || this.cooldownSeconds() > 0) return;
+    if (!this.username.trim() || !this.password) { this.errorKey.set('auth.fillFields'); return; }
     if (this.challengeRequired() && (!this.challenge() || !this.challengeAnswer.trim())) {
       this.errorKey.set('auth.solveChallenge');
       if (!this.challenge()) this.loadChallenge();

@@ -3,7 +3,7 @@ Serializers turn database rows into JSON for the Angular frontend (and back).
 """
 from rest_framework import serializers
 
-from .models import Address, CartItem, Category, Order, OrderItem, Product, Review, User
+from .models import Address, CartItem, Category, Notification, Order, OrderItem, Product, Review, User
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -102,8 +102,19 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     payment_method = serializers.CharField(source="payment.method", read_only=True, default=None)
     payment_status = serializers.CharField(source="payment.status", read_only=True, default=None)
+    promo = serializers.CharField(source="promo_code.code", read_only=True, default=None)
+    card_brand = serializers.CharField(source="payment.card_brand", read_only=True, default="")
+    card_last4 = serializers.CharField(source="payment.card_last4", read_only=True, default="")
+    installment_months = serializers.IntegerField(source="payment.installment_months", read_only=True, default=None)
 
     class Meta:
         model = Order
-        fields = ["id", "status", "shipping_address", "total_amount", "created_at",
-                  "items", "payment_method", "payment_status"]
+        fields = ["id", "status", "shipping_address", "total_amount", "discount_amount", "promo",
+                  "created_at", "items", "payment_method", "payment_status", "card_brand", "card_last4",
+                  "installment_months"]
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ["id", "kind", "message", "message_ru", "message_kk", "link", "order", "is_read", "created_at"]

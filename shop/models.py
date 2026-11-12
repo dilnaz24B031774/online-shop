@@ -7,7 +7,7 @@ so they work even if somebody forgets to check them in the code.
 """
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils.translation import get_language
 
 
@@ -170,6 +170,41 @@ class CartItem(models.Model):
 # ---------------------------------------------------------------------
 # 6. ORDER
 # ---------------------------------------------------------------------
+class PromoCode(models.Model):
+    """Discount code, e.g. BLACKFRIDAY = 20 % off. Checked in services.check_promo()."""
+    code = models.CharField(max_length=30, unique=True)          # stored in UPPER case
+    discount_percent = models.PositiveSmallIntegerField()        # 1..90
+    min_order_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    valid_from = models.DateTimeField(null=True, blank=True)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    max_uses = models.PositiveIntegerField(null=True, blank=True)  # empty = no limit
+    used_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "promo_codes"
+        ordering = ["code"]
+        verbose_name = "промокод"
+        verbose_name_plural = "промокоды"
+        constraints = [
+            models.CheckConstraint(condition=Q(discount_percent__gte=1, discount_percent__lte=90),
+                                   name="promo_discount_1_90"),
+            models.CheckConstraint(condition=Q(min_order_amount__gte=0), name="promo_min_order_not_negative"),
+            models.CheckConstraint(condition=Q(max_uses__isnull=True) | Q(used_count__lte=F("max_uses")),
+                                   name="promo_used_not_over_limit"),
+            models.CheckConstraint(condition=Q(valid_from__isnull=True) | Q(valid_until__isnull=True)
+                                   | Q(valid_until__gt=F("valid_from")), name="promo_dates_order"),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.code = self.code.strip().upper()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.code} (-{self.discount_percent}%)"
+
+
 class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -182,7 +217,10 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     # copied from Address at order time, so old orders keep the old address
     shipping_address = models.CharField(max_length=255)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)   # after discount
+    promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="orders")
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -196,6 +234,7 @@ class Order(models.Model):
                 name="order_status_valid",
             ),
             models.CheckConstraint(condition=Q(total_amount__gte=0), name="order_total_not_negative"),
+            models.CheckConstraint(condition=Q(discount_amount__gte=0), name="order_discount_not_negative"),
         ]
 
     def __str__(self):
@@ -232,6 +271,8 @@ class Payment(models.Model):
         CARD = "card", "Card"
         BANK_TRANSFER = "bank_transfer", "Bank transfer"
         CASH = "cash_on_delivery", "Cash on delivery"
+        QR = "qr", "QR in a bank app"
+        INSTALLMENT = "installment", "Installment 0-0-12"
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -246,13 +287,18 @@ class Payment(models.Model):
     # reference/token from the payment provider instead of card data
     provider_reference = models.CharField(max_length=64, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
+    # card payments: only the type and the last 4 digits - never the full number or CVC
+    card_brand = models.CharField(max_length=12, blank=True)
+    card_last4 = models.CharField(max_length=4, blank=True)
+    failure_reason = models.CharField(max_length=120, blank=True)
+    installment_months = models.PositiveSmallIntegerField(null=True, blank=True)   # 3, 6, 12 or 24
 
     class Meta:
         db_table = "payments"
         constraints = [
             models.CheckConstraint(condition=Q(amount__gt=0), name="payment_amount_positive"),
             models.CheckConstraint(
-                condition=Q(method__in=["card", "bank_transfer", "cash_on_delivery"]),
+                condition=Q(method__in=["card", "bank_transfer", "cash_on_delivery", "qr", "installment"]),
                 name="payment_method_valid",
             ),
             models.CheckConstraint(
@@ -263,6 +309,21 @@ class Payment(models.Model):
             models.CheckConstraint(
                 condition=~Q(status="paid") | Q(paid_at__isnull=False),
                 name="payment_paid_has_time",
+            ),
+            models.CheckConstraint(
+                condition=Q(card_last4="") | Q(card_last4__regex=r"^[0-9]{4}$"),
+                name="payment_card_last4_digits",
+            ),
+            # card details only for card payments
+            models.CheckConstraint(
+                condition=Q(method="card") | (Q(card_last4="") & Q(card_brand="")),
+                name="payment_card_only_for_card",
+            ),
+            # installment: months only for installment payments, and only 3 / 6 / 12 / 24
+            models.CheckConstraint(
+                condition=(Q(method="installment") & Q(installment_months__in=[3, 6, 12, 24]))
+                | (~Q(method="installment") & Q(installment_months__isnull=True)),
+                name="payment_installment_months_valid",
             ),
         ]
 
@@ -289,9 +350,18 @@ class Review(models.Model):
 # 10. NOTIFICATION - messages for the user (order paid, shipped ...)
 # ---------------------------------------------------------------------
 class Notification(models.Model):
+    class Kind(models.TextChoices):
+        ORDER = "order", "Order"            # order paid, cancelled ...
+        PROMO = "promo", "Promotion"        # Black Friday and other campaigns
+        SYSTEM = "system", "System"
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True)
-    message = models.CharField(max_length=255)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.ORDER)
+    message = models.CharField(max_length=255)                 # English (always filled)
+    message_ru = models.CharField(max_length=255, blank=True)
+    message_kk = models.CharField(max_length=255, blank=True)
+    link = models.CharField(max_length=200, blank=True)        # page on the website, e.g. /catalog
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -299,6 +369,10 @@ class Notification(models.Model):
         db_table = "notifications"
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["user", "is_read"], name="notification_user_unread_idx")]
+        constraints = [
+            models.CheckConstraint(condition=Q(kind__in=["order", "promo", "system"]),
+                                   name="notification_kind_valid"),
+        ]
 
 
 class LoginSecurityState(models.Model):

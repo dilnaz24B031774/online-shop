@@ -10,7 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from shop.models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, Review, User,
+    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, PromoCode, Review, User,
 )
 from .catalog_data import MOCK_PRODUCTS, ORIGINAL_PHOTOS
 from .descriptions import DESCRIPTIONS
@@ -79,17 +79,38 @@ REVIEWS = [
 ]
 
 
+def create_promo_codes():
+    """Demo promo codes (also: python manage.py seed_shop --promo-only)."""
+    now = timezone.now()
+    black_friday = timezone.make_aware(timezone.datetime(now.year, 11, 27))
+    codes = [
+        # code,          %,  min order, from,                              until,                          max uses
+        ("WELCOME10",    10, "0",       None,                              None,                           None),
+        ("BLACKFRIDAY",  25, "50",      black_friday - timedelta(days=7),  black_friday + timedelta(days=4), 500),
+        ("SAUDA5",        5, "20",      None,                              now + timedelta(days=60),       100),
+    ]
+    for code, pct, min_order, start, end, uses in codes:
+        PromoCode.objects.update_or_create(code=code, defaults=dict(
+            discount_percent=pct, min_order_amount=Decimal(min_order), valid_from=start,
+            valid_until=end, max_uses=uses, is_active=True))
+
+
 class Command(BaseCommand):
     help = "Create demo data for the Online Shop"
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true", help="delete shop data first")
+        parser.add_argument("--promo-only", action="store_true", help="only add the demo promo codes")
 
     @transaction.atomic
     def handle(self, *args, **opts):
+        if opts["promo_only"]:
+            create_promo_codes()
+            self.stdout.write(self.style.SUCCESS("Promo codes: WELCOME10, BLACKFRIDAY, SAUDA5"))
+            return
         if opts["reset"]:
             for model in (Notification, Review, CartItem, Payment, OrderItem, Order,
-                          Product, Category, Address):
+                          Product, Category, Address, PromoCode):
                 model.objects.all().delete()
             User.objects.filter(username__in=[u[0] for u in USERS]).delete()
 
@@ -153,12 +174,20 @@ class Command(BaseCommand):
             Payment.objects.create(order=order, method=method, amount=total, status=pay_status,
                                    paid_at=created + timedelta(minutes=2),
                                    provider_reference=f"DEMO-{order.pk:06d}")
-            Notification.objects.create(user=users[username], order=order,
-                                        message=f"Order #{order.pk}: {status}.")
+            st_ru = {"paid": "оплачен", "shipped": "в пути", "delivered": "доставлен",
+                     "cancelled": "отменён", "pending": "ожидает оплаты"}[status]
+            st_kk = {"paid": "төленді", "shipped": "жолда", "delivered": "жеткізілді",
+                     "cancelled": "бас тартылды", "pending": "төлемді күтуде"}[status]
+            Notification.objects.create(user=users[username], order=order, link="/orders",
+                                        message=f"Order #{order.pk}: {status}.",
+                                        message_ru=f"Заказ №{order.pk}: {st_ru}.",
+                                        message_kk=f"№{order.pk} тапсырыс: {st_kk}.")
 
         for username, sku, rating, comment in REVIEWS:
             Review.objects.create(user=users[username], product=products[sku],
                                   rating=rating, comment=comment)
+
+        create_promo_codes()
 
         CartItem.objects.create(user=users["timur"], product=products["EL-HEAD-01"], quantity=1)
         CartItem.objects.create(user=users["timur"], product=products["ST-PEN-10"], quantity=2)

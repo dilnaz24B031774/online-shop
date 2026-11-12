@@ -14,7 +14,7 @@ from .models import Category, Order, Product, User
 from .roles import ROLE_CHOICES
 from .services import (
     STAFF_CAN_CANCEL, CancelNotAllowedError, OrderTransitionError, cancel_order,
-    fulfill_order,
+    confirm_payment, fulfill_order,
 )
 
 
@@ -253,6 +253,8 @@ def order_detail(request, pk):
         try:
             if action == "cancel":
                 cancel_order(order, by_staff=True)
+            elif action == "confirm_payment":
+                confirm_payment(order)
             elif action in ("ship", "deliver"):
                 fulfill_order(order, Order.Status.SHIPPED if action == "ship" else Order.Status.DELIVERED)
             else:
@@ -263,9 +265,14 @@ def order_detail(request, pk):
             messages.success(request, f"Заказ №{order.pk} обновлён.")
             return redirect("staff_order_detail", pk=order.pk)
         order.refresh_from_db()
+    payment = getattr(order, "payment", None)
     return render(request, "shop/staff_order_detail.html", {
         "order": order, "items": order.items.select_related("product"),
-        "can_ship": can_change and order.status == Order.Status.PAID,
+        "can_ship": can_change and (order.status == Order.Status.PAID or (
+            order.status == Order.Status.PENDING and payment is not None and payment.method == "cash_on_delivery")),
+        "can_confirm_payment": can_change and order.status == Order.Status.PENDING and payment is not None
+                               and payment.method in ("bank_transfer", "qr") and payment.status == "pending",
+        "payment": payment,
         "can_deliver": can_change and order.status == Order.Status.SHIPPED,
         "can_cancel": can_change and order.status in STAFF_CAN_CANCEL,
         "error": error, "active_section": "orders",

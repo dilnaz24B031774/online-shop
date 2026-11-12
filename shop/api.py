@@ -3,7 +3,9 @@ REST API for the Angular frontend.  All addresses start with /api/
 Login uses JWT tokens: the frontend sends  Authorization: Bearer <access token>
 """
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Avg, Count, Q
+from decimal import Decimal, InvalidOperation
+
+from django.db.models import Avg, Count, Max, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -11,10 +13,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from . import services
-from .models import Address, CartItem, Category, Order, Product, Review
+from . import payments, services
+from .models import Address, CartItem, Category, Notification, Order, Product, Review
 from .serializers import (
-    AddressSerializer, CartItemSerializer, CategorySerializer, OrderSerializer,
+    AddressSerializer, CartItemSerializer, CategorySerializer, NotificationSerializer, OrderSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
     UserSerializer,
 )
@@ -39,20 +41,79 @@ def categories(request):
     return Response(CategorySerializer(qs, many=True).data)
 
 
+def _int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _decimal(value):
+    try:
+        return Decimal(value) if value not in (None, "") else None
+    except InvalidOperation:
+        return None
+
+
+SORTS = {
+    "price": ("price",), "-price": ("-price",), "name": ("name_en",), "new": ("-id",),
+    "rating": ("-avg_rating", "-review_count"),     # best rated first (products without reviews last)
+    "popular": ("-sold", "-id"),                    # most bought first
+}
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def products(request):
-    """GET /api/products/?category=1&q=mouse&sort=price|-price|name"""
+    """GET /api/products/?q=&category=1&brand=Apple,Nike&min_price=10&max_price=200
+                          &min_rating=4&in_stock=1&sort=price|-price|name|new|rating|popular"""
     qs = _products()
-    if request.GET.get("category"):
-        qs = qs.filter(category_id=request.GET["category"])
-    text = request.GET.get("q", "").strip()
+    g = request.GET
+    if g.get("category"):
+        qs = qs.filter(category_id=g["category"])
+    text = g.get("q", "").strip()
     if text:
         qs = qs.filter(Q(name_en__icontains=text) | Q(name_ru__icontains=text)
-                       | Q(name_kk__icontains=text) | Q(sku__icontains=text))
-    sort = request.GET.get("sort")
-    qs = qs.order_by({"price": "price", "-price": "-price", "name": "name_en"}.get(sort, "-id"))  # newest first
+                       | Q(name_kk__icontains=text) | Q(sku__icontains=text) | Q(brand__icontains=text))
+    brands = [b.strip() for b in g.get("brand", "").split(",") if b.strip()]
+    if brands:
+        qs = qs.filter(brand__in=brands)
+    if (low := _decimal(g.get("min_price"))) is not None:
+        qs = qs.filter(price__gte=low)
+    if (high := _decimal(g.get("max_price"))) is not None:
+        qs = qs.filter(price__lte=high)
+    if (rating := _decimal(g.get("min_rating"))) is not None:
+        qs = qs.filter(avg_rating__gte=rating)
+    if g.get("in_stock") in ("1", "true"):
+        qs = qs.filter(stock_quantity__gt=0)
+    sort = g.get("sort", "new")
+    if sort == "popular":
+        # subquery, so the JOIN with reviews does not multiply the numbers
+        from django.db.models import IntegerField, OuterRef, Subquery, Sum
+        from django.db.models.functions import Coalesce
+        from .models import OrderItem
+        sold = (OrderItem.objects.filter(product=OuterRef("pk")).exclude(order__status="cancelled")
+                .values("product").annotate(n=Sum("quantity")).values("n"))
+        qs = qs.annotate(sold=Coalesce(Subquery(sold, output_field=IntegerField()), 0))
+    if sort == "rating":
+        from django.db.models import F
+        qs = qs.order_by(F("avg_rating").desc(nulls_last=True), "-review_count")
+    else:
+        qs = qs.order_by(*SORTS.get(sort, ("-id",)))
     return Response(ProductSerializer(qs, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def product_filters(request):
+    """GET /api/products/filters/?category=1 -> brands and price range for the filter panel"""
+    qs = Product.objects.filter(is_active=True)
+    if request.GET.get("category"):
+        qs = qs.filter(category_id=request.GET["category"])
+    prices = qs.aggregate(min=Min("price"), max=Max("price"))
+    brands = (qs.exclude(brand="").values("brand").annotate(count=Count("id")).order_by("brand"))
+    return Response({"min_price": str(prices["min"] or "0.00"), "max_price": str(prices["max"] or "0.00"),
+                     "brands": list(brands)})
 
 
 @api_view(["GET"])
@@ -177,13 +238,25 @@ def checkout(request):
     """POST {address_id, method}"""
     address = get_object_or_404(Address, pk=request.data.get("address_id"), user=request.user)
     method = request.data.get("method", "card")
-    if method not in ("card", "bank_transfer", "cash_on_delivery"):
+    if method not in ("card", "bank_transfer", "cash_on_delivery", "qr", "installment"):
         return Response({"detail": "Unknown payment method."}, status=400)
+    card = request.data.get("card") if method == "card" else None
+    if method == "card" and not isinstance(card, dict):
+        return Response({"detail": "Enter the card details.", "field": "number"}, status=400)
     try:
-        order = services.place_order(request.user, address, method)
-    except (services.OutOfStockError, services.EmptyCartError) as e:
+        order = services.place_order(request.user, address, method,
+                                     promo_code=request.data.get("promo_code", ""), card=card,
+                                     installment_months=_int(request.data.get("installment_months")))
+    except payments.CardInvalid as e:
+        return Response({"detail": str(e), "field": e.field}, status=400)
+    except (services.OutOfStockError, services.EmptyCartError, services.PromoCodeError,
+            services.PaymentMethodError) as e:
         return Response({"detail": str(e)}, status=400)
-    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+    data = OrderSerializer(Order.objects.select_related("payment", "promo_code").get(pk=order.pk)).data
+    if order.status == Order.Status.CANCELLED:          # the bank declined the card
+        return Response({"detail": "The bank declined the payment: " + order.payment.failure_reason,
+                         "code": "card_declined", "order": data}, status=402)
+    return Response(data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
@@ -219,3 +292,65 @@ def assistant(request):
         "products": ProductSerializer(result["products"], many=True).data,
         "suggestions": result["suggestions"],
     })
+
+
+# ---------------------------------------------------------------- promo codes
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def promo_check(request):
+    """POST {code} -> discount for the current cart (nothing is saved)"""
+    total = services.cart_total(request.user)
+    try:
+        promo = services.check_promo(request.data.get("code", ""), total)
+    except services.PromoCodeError as e:
+        return Response({"valid": False, "detail": str(e)}, status=400)
+    discount = services.discount_for(promo, total)
+    return Response({"valid": True, "code": promo.code, "percent": promo.discount_percent,
+                     "subtotal": f"{total:.2f}", "discount": f"{discount:.2f}",
+                     "total": f"{total - discount:.2f}"})
+
+
+# ---------------------------------------------------------------- notifications
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def notifications(request):
+    """GET /api/notifications/ -> {unread, items: last 20}"""
+    mine = Notification.objects.filter(user=request.user)
+    return Response({
+        "unread": mine.filter(is_read=False).count(),
+        "items": NotificationSerializer(mine.order_by("-created_at")[:20], many=True).data,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def notification_read(request, pk):
+    """POST /api/notifications/<id>/read/"""
+    updated = Notification.objects.filter(pk=pk, user=request.user).update(is_read=True)
+    if not updated:
+        return Response({"detail": "Not found."}, status=404)
+    return Response({"ok": True})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def notifications_read_all(request):
+    """POST /api/notifications/read-all/"""
+    n = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return Response({"marked": n})
+
+
+
+# ---------------------------------------------------------------- QR payment (demo)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def pay_qr(request, pk):
+    """POST /api/orders/<id>/pay-qr/ - demo: the customer has paid in the bank app.
+    In a real shop the bank calls the shop's server; here the button plays the bank."""
+    order = get_object_or_404(Order, pk=pk, user=request.user, payment__method="qr")
+    try:
+        services.confirm_payment(order)
+    except services.OrderTransitionError as e:
+        return Response({"detail": str(e)}, status=400)
+    order = Order.objects.select_related("payment", "promo_code").prefetch_related("items__product__category").get(pk=pk)
+    return Response(OrderSerializer(order).data)

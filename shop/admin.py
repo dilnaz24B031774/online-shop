@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, Review, User,
+    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, PromoCode, Review, User,
 )
 from .roles import MANAGER_GROUP, ROLE_CHOICES, sync_role_access
 
@@ -72,6 +72,7 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
     readonly_fields = ("last_login", "date_joined")
+    actions = ["send_black_friday"]
 
     @staticmethod
     def _protected_user(obj):
@@ -136,6 +137,12 @@ class UserAdmin(BaseUserAdmin):
             obj.is_staff = obj.role in (User.Role.MANAGER, User.Role.ADMIN)
             obj.is_superuser = obj.role == User.Role.ADMIN
         super().save_model(request, obj, form, change)
+
+    @admin.action(description="Отправить уведомление Black Friday выбранным пользователям")
+    def send_black_friday(self, request, queryset):
+        from .services import send_black_friday
+        n = send_black_friday(users=queryset.filter(is_active=True))
+        self.message_user(request, f"Уведомление Black Friday отправлено: {n}.", messages.SUCCESS)
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
@@ -206,7 +213,8 @@ class OrderAdmin(admin.ModelAdmin):
     list_per_page = 25
     inlines = [OrderItemInline]
     actions = ["cancel_and_refund"]
-    fields = ("process_order", "user", "status", "shipping_address", "total_amount", "created_at", "updated_at")
+    fields = ("process_order", "user", "status", "shipping_address", "promo_code", "discount_amount",
+              "total_amount", "created_at", "updated_at")
     readonly_fields = fields
 
     @admin.display(description="Обработка")
@@ -282,9 +290,19 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ("user", "order", "message", "is_read", "created_at")
-    list_filter = ("is_read", "created_at")
+    list_display = ("user", "kind", "order", "message", "is_read", "created_at")
+    list_filter = ("kind", "is_read", "created_at")
     search_fields = ("user__username", "message", "=order__id")
     list_select_related = ("user", "order")
     readonly_fields = ("created_at",)
     raw_id_fields = ("user", "order")
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ("code", "discount_percent", "min_order_amount", "valid_from", "valid_until",
+                    "used_count", "max_uses", "is_active")
+    list_filter = ("is_active",)
+    list_editable = ("is_active",)
+    search_fields = ("code",)
+    readonly_fields = ("used_count", "created_at")

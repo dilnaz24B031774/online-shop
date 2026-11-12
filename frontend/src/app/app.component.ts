@@ -8,10 +8,11 @@ import { CartService } from './core/cart.service';
 import { I18nService, LANGS } from './core/i18n.service';
 import { Category } from './core/models';
 import { AssistantComponent } from './shared/assistant.component';
+import { NotificationBellComponent } from './shared/notification-bell.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, AssistantComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, AssistantComponent, NotificationBellComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })

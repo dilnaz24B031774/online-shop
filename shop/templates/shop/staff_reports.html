@@ -1,0 +1,126 @@
+{% extends 'shop/staff_base.html' %}
+{% block title %}Отчёты{% endblock %}
+{% block content %}
+<style>
+  .period { display:flex; gap:6px; flex-wrap:wrap; }
+  .period a { padding:8px 14px; border:1px solid var(--line); border-radius:999px; background:white; color:var(--ink); font-size:12px; font-weight:600; }
+  .period a.on { background:var(--green); border-color:var(--green); color:white; }
+  .period a:hover { text-decoration:none; border-color:#acc6b5; }
+  .bar { position:relative; height:8px; background:#eef2ed; border-radius:99px; min-width:120px; overflow:hidden; }
+  .bar span { position:absolute; inset:0 auto 0 0; background:var(--green); border-radius:99px; }
+  .share { display:flex; align-items:center; gap:12px; }
+  .share small { color:var(--muted); width:42px; text-align:right; }
+  .threshold { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+  .threshold input { width:72px !important; padding:6px 8px !important; }
+  .head-links { display:flex; gap:14px; align-items:center; }
+</style>
+
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">Отчёт менеджера</p>
+    <h1>Продажи и склад</h1>
+    <p class="intro">Отменённые заказы не учитываются. Выручка по категориям и товарам показана до скидки по промокоду.</p>
+  </div>
+  <nav class="period" aria-label="Период">
+    {% for value, label in periods %}
+      <a href="?period={{ value }}&threshold={{ threshold }}" {% if value == period %}class="on" aria-current="true"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+<div class="stats">
+  <div class="stat primary"><span class="stat-label">Выручка</span><strong class="stat-value number">${{ summary.revenue|floatformat:2 }}</strong><span class="stat-note">Скидки по промокодам: ${{ summary.discounts|floatformat:2 }}</span></div>
+  <div class="stat"><span class="stat-label">Заказы</span><strong class="stat-value number">{{ summary.orders }}</strong><span class="stat-note">Отменено: {{ summary.cancelled }}</span></div>
+  <div class="stat"><span class="stat-label">Средний чек</span><strong class="stat-value number">${{ summary.avg_order|floatformat:2 }}</strong><span class="stat-note">Выручка ÷ число заказов</span></div>
+  <div class="stat"><span class="stat-label">Продано товаров</span><strong class="stat-value number">{{ summary.units }}</strong><span class="stat-note">Штук за период</span></div>
+</div>
+
+<div class="grid-two">
+  <section class="panel">
+    <div class="panel-head"><h2>Продажи по категориям</h2><a href="{% url 'staff_reports_csv' 'categories' %}?period={{ period }}">Скачать CSV</a></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Категория</th><th>Продано</th><th>Выручка</th><th>Доля</th></tr></thead>
+      <tbody>
+      {% for r in categories %}
+        <tr>
+          <td><strong>{{ r.name }}</strong></td>
+          <td class="number">{{ r.units }} шт.</td>
+          <td class="number">${{ r.revenue|floatformat:2 }}</td>
+          <td><div class="share"><div class="bar"><span style="width:{{ r.share|stringformat:'.1f' }}%"></span></div><small>{{ r.share }}%</small></div></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="empty"><strong>Продаж нет</strong>За выбранный период заказов не было.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Мало на складе</h2>
+      <div class="head-links">
+        <form class="threshold" method="get">
+          <input type="hidden" name="period" value="{{ period }}">
+          <label for="th">меньше</label>
+          <input id="th" type="number" name="threshold" min="1" max="1000" value="{{ threshold }}" onchange="this.form.submit()">
+          <span>шт.</span>
+        </form>
+        <a href="{% url 'staff_reports_csv' 'low-stock' %}?threshold={{ threshold }}">CSV</a>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Товар</th><th>Остаток</th></tr></thead>
+      <tbody>
+      {% for p in low_stock %}
+        <tr>
+          <td class="cell-main">{% if perms.shop.change_product %}<a href="{% url 'staff_product_edit' p.pk %}">{{ p.name_ru|default:p.name_en }}</a>{% else %}{{ p.name_ru|default:p.name_en }}{% endif %}<small>{{ p.sku }} · {{ p.category.name_ru|default:p.category.name_en }}</small></td>
+          <td><span class="badge {% if p.stock_quantity == 0 %}red{% else %}pending{% endif %}">{% if p.stock_quantity == 0 %}нет в наличии{% else %}{{ p.stock_quantity }} шт.{% endif %}</span></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2" class="empty"><strong>Остатки в порядке</strong>Нет товаров с остатком меньше {{ threshold }} шт.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<div class="grid-two">
+  <section class="panel">
+    <div class="panel-head"><h2>Хиты продаж</h2><a href="{% url 'staff_reports_csv' 'best-sellers' %}?period={{ period }}">Скачать CSV</a></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Товар</th><th>Продано</th><th>Выручка</th><th>Остаток</th></tr></thead>
+      <tbody>
+      {% for r in best %}
+        <tr>
+          <td class="muted">{{ forloop.counter }}</td>
+          <td class="cell-main"><strong>{{ r.product__name_ru|default:r.product__name_en }}</strong><small>{{ r.product__sku }}</small></td>
+          <td class="number">{{ r.units }} шт.</td>
+          <td class="number">${{ r.revenue|floatformat:2 }}</td>
+          <td class="number">{{ r.product__stock_quantity }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="empty"><strong>Продаж нет</strong>За выбранный период заказов не было.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Промокоды</h2>{% if perms.shop.view_promocode %}<a href="{% url 'admin:shop_promocode_changelist' %}">Управлять →</a>{% endif %}</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Код</th><th>Заказы</th><th>Скидка</th></tr></thead>
+      <tbody>
+      {% for r in promos %}
+        <tr>
+          <td><strong>{{ r.promo_code__code }}</strong> <span class="badge green">−{{ r.promo_code__discount_percent }}%</span></td>
+          <td class="number">{{ r.orders }}</td>
+          <td class="number">${{ r.discount|floatformat:2 }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="empty"><strong>Промокоды не использовались</strong>За выбранный период.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+</div>
+{% endblock %}
