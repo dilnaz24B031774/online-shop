@@ -1,0 +1,130 @@
+/* Fonts are bundled with the app (work offline) */
+@import "@fontsource/golos-text/400.css";
+@import "@fontsource/golos-text/500.css";
+@import "@fontsource/golos-text/600.css";
+@import "@fontsource/golos-text/700.css";
+
+/* Sauda — retail style: deep green, white, amber */
+:root {
+  --green-900: #0e3b2e;
+  --green-700: #155a45;
+  --green-500: #1f7a5c;
+  --green-50: #eaf4ef;
+  --amber: #f6a623;
+  --amber-50: #fff4df;
+  --red: #d9483b;
+
+  --text: #17201c;
+  --muted: #66706b;
+  --line: #e3e8e6;
+  --soft: #f4f6f5;        /* photo backgrounds, inputs */
+  --white: #ffffff;
+
+  /* older names used by some pages */
+  --ink: var(--text);
+  --ink-soft: var(--muted);
+  --sky: var(--soft);
+  --surface: var(--white);
+  --teal: var(--green-700);
+  --teal-dark: var(--green-900);
+  --sun: var(--amber);
+  --berry: var(--red);
+  --indigo: #3b4aa0;
+  --ok: #2f8f5b;
+  --warn: #b7791f;
+
+  --font-display: "Golos Text", system-ui, -apple-system, sans-serif;
+  --font-body: "Golos Text", system-ui, -apple-system, sans-serif;
+
+  --r-lg: 16px;
+  --r-md: 12px;
+  --r-sm: 8px;
+  --shadow: 0 8px 24px -16px rgba(14, 59, 46, .35);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--white);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; margin: 0 0 .5em; letter-spacing: -.01em; }
+h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 700; }
+h2 { font-size: clamp(1.25rem, 2vw, 1.6rem); font-weight: 700; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0 0 1em; }
+
+a { color: var(--green-700); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container { width: min(1240px, 100% - 32px); margin-inline: auto; }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5em;
+  font: 600 .95rem var(--font-body);
+  padding: .75em 1.4em;
+  border-radius: var(--r-sm);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-decoration: none !important;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-primary { background: var(--green-700); color: #fff; }
+.btn-primary:hover { background: var(--green-900); }
+.btn-sun { background: var(--amber); color: var(--text); }
+.btn-sun:hover { background: #e8961a; }
+.btn-ghost { background: #fff; color: var(--text); border-color: var(--line); }
+.btn-ghost:hover { border-color: var(--green-700); color: var(--green-700); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn-block { width: 100%; }
+
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+/* forms */
+label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .35em; }
+input, select, textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  padding: .7em .9em;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-sm);
+  background: #fff;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--green-500); outline: none; }
+.field { margin-bottom: 1rem; }
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 1.5rem;
+}
+
+.alert { padding: .8em 1em; border-radius: var(--r-sm); margin-bottom: 1rem; font-weight: 500; }
+.alert-error { background: #fdecea; color: #a8322a; }
+.alert-ok { background: #e3f4ea; color: #1f6b42; }
+.muted { color: var(--muted); }
+
+.chip {
+  display: inline-block; font-size: .78rem; font-weight: 600;
+  padding: .25em .75em; border-radius: 999px; background: var(--green-50); color: var(--green-700);
+}
+
+.page { padding: 2rem 0 4rem; }
+
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.1rem;
+}
+.section-head h2 { margin: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

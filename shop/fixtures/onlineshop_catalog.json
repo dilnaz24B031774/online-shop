@@ -1,0 +1,158 @@
+[
+{
+  "model": "shop.category",
+  "pk": 1,
+  "fields": {
+    "name_en": "Electronics",
+    "name_ru": "",
+    "name_kk": "",
+    "is_active": true
+  }
+},
+{
+  "model": "shop.category",
+  "pk": 2,
+  "fields": {
+    "name_en": "Stationery",
+    "name_ru": "",
+    "name_kk": "",
+    "is_active": true
+  }
+},
+{
+  "model": "shop.category",
+  "pk": 3,
+  "fields": {
+    "name_en": "Home",
+    "name_ru": "",
+    "name_kk": "",
+    "is_active": true
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 1,
+  "fields": {
+    "name_en": "USB-C Cable",
+    "name_ru": "",
+    "name_kk": "",
+    "category": 1,
+    "sku": "SQL-10",
+    "description_en": "Charging cable 1 m",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "12.00",
+    "stock_quantity": 120,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:17:31.220Z",
+    "updated_at": "2026-11-05T18:17:31.220Z"
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 2,
+  "fields": {
+    "name_en": "Wireless Mouse",
+    "name_ru": "",
+    "name_kk": "",
+    "category": 1,
+    "sku": "SQL-12",
+    "description_en": "Silent mouse",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "25.00",
+    "stock_quantity": 6,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:17:31.222Z",
+    "updated_at": "2026-11-05T18:17:31.222Z"
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 3,
+  "fields": {
+    "name_en": "Notebook A5",
+    "name_ru": "",
+    "name_kk": "",
+    "category": 2,
+    "sku": "SQL-20",
+    "description_en": "80 pages",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "3.00",
+    "stock_quantity": 200,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:17:31.223Z",
+    "updated_at": "2026-11-05T18:17:31.223Z"
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 4,
+  "fields": {
+    "name_en": "Water Bottle",
+    "name_ru": "",
+    "name_kk": "",
+    "category": 3,
+    "sku": "SQL-30",
+    "description_en": "500 ml",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "8.00",
+    "stock_quantity": 45,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:17:31.223Z",
+    "updated_at": "2026-11-05T18:17:31.223Z"
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 5,
+  "fields": {
+    "name_en": "Desk Lamp",
+    "name_ru": "",
+    "name_kk": "",
+    "category": 3,
+    "sku": "SQL-31",
+    "description_en": "LED lamp",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "20.00",
+    "stock_quantity": 8,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:17:31.224Z",
+    "updated_at": "2026-11-05T18:17:31.224Z"
+  }
+},
+{
+  "model": "shop.product",
+  "pk": 6,
+  "fields": {
+    "name_en": "apple",
+    "name_ru": "яблока",
+    "name_kk": "алма",
+    "category": 3,
+    "sku": "3",
+    "description_en": "",
+    "description_ru": "",
+    "description_kk": "",
+    "price": "50.00",
+    "stock_quantity": 2,
+    "brand": "",
+    "image_url": "",
+    "is_active": true,
+    "created_at": "2026-11-05T18:34:21.135Z",
+    "updated_at": "2026-11-05T18:34:21.135Z"
+  }
+}
+]
