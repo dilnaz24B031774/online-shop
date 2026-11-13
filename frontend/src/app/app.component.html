@@ -56,6 +56,8 @@
         </a>
       }
 
+      @if (auth.isLoggedIn()) { <app-notification-bell /> }
+
       <a routerLink="/cart" class="cart" [attr.aria-label]="i.t('nav.cart')">
         <span class="cart-icon">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg>

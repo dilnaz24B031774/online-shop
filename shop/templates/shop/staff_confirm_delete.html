@@ -1,0 +1,4 @@
+{% extends 'shop/staff_base.html' %}{% block title %}{{ title }}{% endblock %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Управление каталогом</p><h1>{{ title }}</h1></div></div>
+<form class="panel confirm" method="post">{% csrf_token %}<div class="panel-body"><p class="confirm-name">{{ object }}</p>{% if error %}<div class="message error" role="alert">{{ error }}</div>{% else %}<p>Подтвердите удаление. Отменить это действие не получится.</p><p class="section-note">Товары, которые уже покупали, и категории с товарами защищены от удаления. Товар можно скрыть с витрины в его настройках.</p>{% endif %}</div><div class="form-actions">{% if not error %}<button class="button danger" type="submit">Удалить</button>{% endif %}<a class="button secondary" href="{{ back_url }}">Вернуться к списку</a></div></form>
+{% endblock %}

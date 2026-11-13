@@ -1,57 +1,43 @@
 # Sauda — Online Shop
 
-Student project · Basics of Information Systems
+Our team project for the course **Basics of Information Systems**.
+Sauda is a small online shop: customers can look at products, put them in the cart,
+use a promo code and make an order. Staff work with products and orders in the admin panel.
+
+**Stack:** Django + Django REST Framework (backend), PostgreSQL (database), Angular 19 (frontend), JWT tokens (login).
+
+## Team
+
+| Name | Role |
+|---|---|
+| Nurbergenova Inzhu | Systems Analysis & Requirements |
+| Zhanabergenova Dilnaz | Data & Database |
+| Nokhat Dilyara | Application & Development |
+| Maralbekuly Yersaiyn | Architecture & Security |
+| Oishy Ayaulym | Testing, Analytics & Integration |
+
+## Project folders
 
 ```
-onlineshop/            Django + PostgreSQL: database, REST API, JWT login, admin panel
-onlineshop/frontend/   Angular 19: the website customers use
+config/      Django settings and main urls
+shop/        models (tables), API, services, admin panel, tests
+frontend/    Angular website
+docs/        ERD and SQL script
 ```
 
-## How the parts talk to each other (integration)
+How it works: Angular sends a request to `http://127.0.0.1:8000/api/...`,
+Django checks it, works with PostgreSQL and sends back JSON.
+After login the frontend gets an access token and sends it in every private request
+(`Authorization: Bearer ...`). Without a token the cart and orders return `401`.
 
-```
- Angular (browser, port 4200)  ──HTTP + JSON──▶  Django REST API (port 8000)  ──▶  PostgreSQL
-        frontend/src/app/core/api.service.ts        shop/api.py                     shop/models.py
-```
+## How to run (Mac)
 
-1. The customer clicks something on the website (Angular).
-2. Angular sends a request to `http://127.0.0.1:8000/api/...` (all requests are in `api.service.ts`).
-3. Django checks the request, works with the database and answers with JSON.
-4. Angular shows the answer.
+You need Python 3.11+, Node.js 20+ and PostgreSQL with a database called `onlineshop`.
 
-**Login with tokens (JWT):** `POST /api/auth/login/` returns an `access` token.
-Angular saves it and adds `Authorization: Bearer <token>` to every private request
-(`auth.interceptor.ts`). Without a token, cart and orders answer `401`.
-
-## API
-
-| Method | Address | What it does | Login |
-|---|---|---|---|
-| GET | /api/categories/ | categories with product count | – |
-| GET | /api/products/?q=&category=&sort= | catalogue, filter, sort | – |
-| GET | /api/products/best-sellers/ | top 4 products | – |
-| GET | /api/products/{id}/ | one product with reviews | – |
-| POST | /api/products/{id}/reviews/ | write a review (rating 1–5) | ✔ |
-| GET | /api/search/?q= | search products, categories, own orders | – |
-| POST | /api/auth/register/ | create account (password rules checked) | – |
-| POST | /api/auth/login/ | username + password → JWT tokens | – |
-| POST | /api/auth/refresh/ | new access token | – |
-| GET/PATCH | /api/me/ | my profile | ✔ |
-| GET/POST | /api/addresses/ | my addresses | ✔ |
-| GET/POST | /api/cart/ | my cart / set quantity | ✔ |
-| POST | /api/checkout/ | place order (one transaction) | ✔ |
-| GET | /api/orders/ | my orders | ✔ |
-| POST | /api/orders/{id}/cancel/ | cancel order + refund, stock goes back | ✔ |
-| POST | /api/assistant/ | shop assistant: {message, lang} → text + products | – |
-
-## Run it on a Mac
-
-You need: **Python 3.11+**, **Node.js 20+** (nodejs.org, LTS), **PostgreSQL** with the database `onlineshop`.
-
-### Terminal 1 — backend
+**Terminal 1 — backend**
 
 ```bash
-cd ~/Downloads/onlineshop
+cd online-shop
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -61,92 +47,115 @@ export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=your_password
 
 python3 manage.py migrate
-python3 manage.py seed_shop        # demo data: 59 products, 9 categories (only the first time)
+python3 manage.py seed_shop          # demo data, only the first time
 python3 manage.py runserver
 ```
 
-Leave this window open. Check: http://127.0.0.1:8000/api/products/ shows JSON.
-
-### Terminal 2 — frontend (open a NEW terminal window: Cmd+N)
+**Terminal 2 — frontend**
 
 ```bash
-cd ~/Downloads/onlineshop/frontend
-npm install                        # only the first time, takes 1–2 minutes
+cd online-shop/frontend
+npm install                          # only the first time
 npm start
 ```
 
-Open **http://localhost:4200** — this is the website.
+Website: http://localhost:4200 · Staff panel: http://127.0.0.1:8000/staff/ · Django admin: http://127.0.0.1:8000/admin/
 
-### Every next time
+Next time you only need `source venv/bin/activate`, the three `export` lines and `runserver`,
+and `npm start` in the second terminal.
 
-Terminal 1: `cd ~/Downloads/onlineshop`, `source venv/bin/activate`, the three `export` lines, `python3 manage.py runserver`.
-Terminal 2: `cd ~/Downloads/onlineshop/frontend`, `npm start`.
+Important: if you start `runserver` without the `export` lines, Django uses an empty SQLite file
+instead of PostgreSQL, and logins will not work.
 
-## New: refunds, assistant, descriptions
+## Demo accounts
 
-- **Cancel + refund.** "My orders" → *Cancel order* (until the order is shipped). One transaction: the order becomes
-  *cancelled*, the payment *refunded*, the products go back to stock, the customer gets a notification.
-  Staff can also do it in the admin panel: Orders → select → action *Cancel and refund selected orders*.
-- **Shop assistant.** The chat button at the bottom right. It works without internet and without external AI:
-  it understands keywords in EN/RU/KK, answers about delivery, payment, refunds, contacts and the last order,
-  and finds products with a budget ("наушники до 150$", "gift ideas", "кроссовка 120$ дейін"). Code: `shop/assistant.py`.
-- **Descriptions** in English, Russian and Kazakh for all products. To add them to an existing database
-  without deleting anything: `python3 manage.py fill_descriptions`.
+Password for all: `Shop2026!`
 
-## Product photos
+| Username | Role |
+|---|---|
+| aigerim, dana, timur | customer |
+| manager | store manager |
+| admin | administrator |
 
-Photos and mock product data come from [DummyJSON](https://dummyjson.com) (free demo data for online shops).
-The link to each photo is saved in the database (`products.image_url`, can be changed in the admin panel).
+## Features
 
-- **Online:** photos load from the internet automatically.
-- **Offline (for the exam):** with the backend running, run once in Terminal 2:
-  ```bash
-  cd frontend
-  npm run download-images
-  ```
-  Photos are saved in `frontend/public/products/`. Restart `npm start` — the shop now works without internet.
-- Products without a photo show a clean icon instead.
+- Registration and login with JWT tokens, password rules (min 8 chars, a digit, a capital letter)
+- Catalogue in 3 languages (EN / RU / KK), search by products, categories and own orders
+- **Filters:** price from–to, brand, rating, only in stock; sort by price, name, rating, popularity
+- Cart and checkout in one database transaction (two people cannot buy the last item)
+- **Promo codes** with a percent, minimum order, dates and a usage limit
+- Cancel an order: stock comes back, payment becomes refunded, promo code use comes back
+- Reviews with rating 1–5
+- **Notifications** (bell in the header): order paid / shipped / cancelled, Black Friday
+- Shop assistant chat (works without internet)
+- Staff panel `/staff/`: dashboard, products, categories, orders, users
+- Roles: customer, manager, admin
+- Login protection: after 3 wrong tries a small math check, after 5 — block for 5 minutes
 
-## Updating from the previous version
+## Database
 
-The database got two new product fields (brand, photo) and a bigger demo catalogue:
+11 shop tables: `users`, `addresses`, `categories`, `products`, `cart_items`, `orders`,
+`order_items`, `payments`, `reviews`, `notifications`, `promo_codes`
+plus 2 tables for login protection. ERD: `docs/erd.mmd`.
+
+Rules are checked by the database itself (CHECK and UNIQUE constraints), for example:
+price > 0, stock ≥ 0, rating 1–5, one review per user and product,
+promo discount 1–90 %, promo used count not more than the limit.
+
+## Promo codes
+
+Demo codes: `WELCOME10` (−10 %), `SAUDA5` (−5 % from $20), `BLACKFRIDAY` (−25 % from $50, 20 Nov – 1 Dec).
+To add them to a database that already has data:
 
 ```bash
-python3 manage.py migrate
-python3 manage.py seed_shop --reset     # recreates demo products, orders and demo users
+python3 manage.py seed_shop --promo-only
 ```
 
-`--reset` deletes all shop data (products, orders, carts) and the demo users, then creates them again.
-Users you added yourself stay, but their orders are deleted.
+New codes can be added in Django admin → Promo codes.
 
-## Demo accounts (password for all: `Shop2026!`)
+## Black Friday notification
 
-| Username | Role | Where |
+```bash
+python3 manage.py send_black_friday
+```
+
+Or in Django admin: Users → select users → action "Send Black Friday notification".
+
+## Main API
+
+| Method | Address | Login |
 |---|---|---|
-| aigerim, dana, timur | customer | website |
-| manager | store manager | website + admin panel |
-| admin | administrator | http://127.0.0.1:8000/admin |
-
-## What to show
-
-| Exam requirement | Where |
-|---|---|
-| More than 5 functions | registration, login (JWT), catalogue, search, cart, checkout, orders, cancel + refund, reviews, addresses, notifications, AI assistant |
-| Multilanguage | EN / RU / ҚАЗ switch in the header — interface and product names change |
-| Search (2–3 entities) | search box in the header: products, categories, your orders |
-| Admin panel | http://127.0.0.1:8000/admin — CRUD for all tables, roles |
+| GET | `/api/products/?q=&category=&brand=&min_price=&max_price=&min_rating=&in_stock=1&sort=` | – |
+| GET | `/api/products/filters/` (brands and price range) | – |
+| GET | `/api/products/{id}/`, `/api/categories/`, `/api/search/?q=` | – |
+| POST | `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/` | – |
+| GET/POST | `/api/cart/` | ✔ |
+| POST | `/api/promo/check/` `{code}` | ✔ |
+| POST | `/api/checkout/` `{address_id, method, promo_code}` | ✔ |
+| GET | `/api/orders/`, POST `/api/orders/{id}/cancel/` | ✔ |
+| GET | `/api/notifications/`, POST `/api/notifications/read-all/` | ✔ |
 
 ## Tests
 
 ```bash
-python3 manage.py test shop      # 31 tests: rules, transactions, passwords, refunds, assistant, API flow
+python3 manage.py test shop
 ```
 
-## Problems
+141 tests: database rules, checkout transaction, passwords, refunds, promo codes, filters,
+notifications, staff panel, login protection.
 
-| Message | What to do |
+## Migrations note
+
+`main` had `0003_notification_kind_link` and `my-changes` had `0003_login_security`.
+`0004_merge_login_security_notifications` joins them, so `python3 manage.py migrate`
+works on both databases.
+
+## Common problems
+
+| Problem | What to do |
 |---|---|
-| "The server does not answer…" on the website | Terminal 1 is closed or `runserver` stopped — start it again |
-| `database "onlineshop" does not exist` | create it in pgAdmin / DataGrip: `CREATE DATABASE onlineshop;` |
-| `npm: command not found` | install Node.js LTS from nodejs.org |
-| Users added in the admin are not in pgAdmin | `runserver` was started without the `export` lines (it used SQLite) |
+| "Server does not answer" on the website | backend is not running, start `runserver` again |
+| `database "onlineshop" does not exist` | `CREATE DATABASE onlineshop;` in pgAdmin |
+| `You have unapplied migrations` | `python3 manage.py migrate` |
+| Admin login does not work | check the `export` lines; reset password: `python3 manage.py changepassword admin` |
+| "Sign-in is temporarily blocked" | 5 wrong passwords — wait 5 minutes |

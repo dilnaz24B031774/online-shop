@@ -85,10 +85,24 @@ export interface Order {
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   shipping_address: string;
   total_amount: string;
+  discount_amount: string;
+  promo: string | null;
   created_at: string;
   items: OrderItem[];
   payment_method: string | null;
   payment_status: string | null;
+  card_brand?: string;
+  card_last4?: string;
+  installment_months?: number | null;
+}
+
+/** typed by the customer, sent once to /checkout/, never saved in the browser */
+export interface CardInput {
+  number: string;
+  holder: string;
+  exp_month: number;
+  exp_year: number;
+  cvc: string;
 }
 
 export interface SearchResult {
@@ -100,4 +114,31 @@ export interface SearchResult {
 export interface Tokens {
   access: string;
   refresh: string;
+}
+
+export interface AppNotification {
+  id: number;
+  kind: 'order' | 'promo' | 'system';
+  message: string;
+  message_ru: string;
+  message_kk: string;
+  link: string;
+  order: number | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface ProductFilters {
+  min_price: string;
+  max_price: string;
+  brands: { brand: string; count: number }[];
+}
+
+export interface PromoCheck {
+  valid: boolean;
+  code: string;
+  percent: number;
+  subtotal: string;
+  discount: string;
+  total: string;
 }

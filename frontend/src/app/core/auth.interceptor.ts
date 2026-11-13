@@ -12,15 +12,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = auth.token();
 
-  const isOurApi = req.url.startsWith(API_URL);
-  const request = token && isOurApi
+  const isOurApi = req.url === API_URL || req.url.startsWith(`${API_URL}/`);
+  const isPublicAuth = req.url.startsWith(`${API_URL}/auth/`);
+  const request = token && isOurApi && !isPublicAuth
     ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
     : req;
 
   return next(request).pipe(
     catchError((err: HttpErrorResponse) => {
       // token expired or wrong -> log out and ask to sign in again
-      if (err.status === 401 && token && isOurApi) {
+      if (err.status === 401 && token && isOurApi && !isPublicAuth) {
         auth.logout(false);
         router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
       }

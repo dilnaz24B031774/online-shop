@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap, switchMap, map } from 'rxjs';
 
-import { ApiService } from './api.service';
+import { ApiService, LoginProof } from './api.service';
 import { User } from './models';
 
 const ACCESS = 'sauda.access';
@@ -15,7 +15,7 @@ function write(key: string, value: string | null) {
   try { value === null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch { /* private mode */ }
 }
 
-/**
+/** 
  * Login with JWT tokens.
  * The backend returns an "access" token; every private request sends it
  * in the header  Authorization: Bearer <token>  (see auth.interceptor.ts).
@@ -39,8 +39,8 @@ export class AuthService {
     }
   }
 
-  login(username: string, password: string): Observable<User> {
-    return this.api.login(username, password).pipe(
+  login(username: string, password: string, proof: LoginProof = {}): Observable<User> {
+    return this.api.login(username, password, proof).pipe(
       tap(t => this.saveTokens(t.access, t.refresh)),
       switchMap(() => this.api.me()),
       tap(u => this.user.set(u)),

@@ -18,7 +18,28 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from shop import reports, staff
+from shop.auth_forms import ProtectedAdminAuthenticationForm
+
+admin.site.index_template = "shop/admin_index.html"
+admin.site.login_form = ProtectedAdminAuthenticationForm
+
+
 urlpatterns = [
+    path("staff/", admin.site.admin_view(staff.dashboard), name="staff_dashboard"),
+    path("staff/catalog/", admin.site.admin_view(staff.catalog), name="staff_catalog"),
+    path("staff/catalog/add/", admin.site.admin_view(staff.product_form), name="staff_product_add"),
+    path("staff/catalog/<int:pk>/", admin.site.admin_view(staff.product_form), name="staff_product_edit"),
+    path("staff/catalog/<int:pk>/delete/", admin.site.admin_view(staff.product_delete), name="staff_product_delete"),
+    path("staff/categories/", admin.site.admin_view(staff.categories), name="staff_categories"),
+    path("staff/categories/add/", admin.site.admin_view(staff.category_form), name="staff_category_add"),
+    path("staff/categories/<int:pk>/", admin.site.admin_view(staff.category_form), name="staff_category_edit"),
+    path("staff/categories/<int:pk>/delete/", admin.site.admin_view(staff.category_delete), name="staff_category_delete"),
+    path("staff/orders/", admin.site.admin_view(staff.orders), name="staff_orders"),
+    path("staff/orders/<int:pk>/", admin.site.admin_view(staff.order_detail), name="staff_order_detail"),
+    path("staff/users/", admin.site.admin_view(staff.users), name="staff_users"),
+    path("staff/reports/", admin.site.admin_view(reports.reports), name="staff_reports"),
+    path("staff/reports/<slug:kind>.csv", admin.site.admin_view(reports.reports_csv), name="staff_reports_csv"),
     path("admin/", admin.site.urls),
     path("api/", include("shop.urls")),
 ]
