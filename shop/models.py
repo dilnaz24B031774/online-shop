@@ -299,3 +299,19 @@ class Notification(models.Model):
         db_table = "notifications"
         ordering = ["-created_at"]
         indexes = [models.Index(fields=["user", "is_read"], name="notification_user_unread_idx")]
+
+
+# ---------------------------------------------------------------------
+# 11. FAVORITE - liked products of a customer
+# ---------------------------------------------------------------------
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "favorites"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="favorite_one_per_user_product"),
+        ]

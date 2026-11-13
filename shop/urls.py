@@ -25,4 +25,6 @@ urlpatterns = [
     path("checkout/", api.checkout),
     path("orders/", api.my_orders),
     path("orders/<int:pk>/cancel/", api.cancel_order),
+    path("favorites/", api.favorites),
+    path("favorites/<int:product_id>/", api.remove_favorite),
 ]

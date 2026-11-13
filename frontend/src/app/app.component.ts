@@ -8,6 +8,7 @@ import { CartService } from './core/cart.service';
 import { I18nService, LANGS } from './core/i18n.service';
 import { Category } from './core/models';
 import { AssistantComponent } from './shared/assistant.component';
+import { FavoritesService } from './core/favorites.service';
 
 @Component({
   selector: 'app-root',
@@ -25,6 +26,7 @@ export class AppComponent implements OnInit {
   readonly langs = LANGS;
   readonly adminUrl = 'http://127.0.0.1:8000/admin/';
   readonly categories = signal<Category[]>([]);
+  readonly fav = inject(FavoritesService);
   readonly year = new Date().getFullYear();
   query = '';
   searchCategory = '';

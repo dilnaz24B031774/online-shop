@@ -7,6 +7,8 @@ import { I18nService } from '../core/i18n.service';
 import { Product } from '../core/models';
 import { ProductImageComponent } from './product-image.component';
 import { StarsComponent } from './stars.component';
+import { FavoritesService } from '../core/favorites.service';
+
 
 @Component({
   selector: 'app-product-card',
@@ -37,11 +39,17 @@ import { StarsComponent } from './stars.component';
         }
       </div>
     </article>
+    <button type="button" class="like" [class.on]="fav.isLiked(p.id)" (click)="like()"
+              [attr.aria-pressed]="fav.isLiked(p.id)"
+              [attr.aria-label]="fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
+      </button>
   `,
   styles: [`
     .card {
       background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;
       display: flex; flex-direction: column; height: 100%; transition: box-shadow .15s, border-color .15s;
+      position: relative;
     }
     .card:hover { border-color: #cfd9d5; box-shadow: 0 10px 28px -18px rgba(14, 59, 46, .45); }
     .photo { position: relative; display: block; aspect-ratio: 1 / .9; background: var(--soft); padding: 14px; overflow: hidden; min-height: 0; }
@@ -69,6 +77,14 @@ import { StarsComponent } from './stars.component';
     .add.done { background: var(--green-50); border-color: var(--green-50); color: var(--green-700); }
     .add svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .sold { margin-top: auto; color: var(--muted); font-weight: 600; font-size: .86rem; padding: .55em 0; }
+    .like {
+      position: absolute; right: 10px; top: 10px; z-index: 1; width: 36px; height: 36px; border-radius: 50%;
+      border: 0; background: #fff; cursor: pointer; display: grid; place-items: center;
+      box-shadow: 0 4px 12px -4px rgba(14, 59, 46, .35);
+    }
+    .like svg { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; }
+    .like:hover svg { stroke: var(--red); }
+    .like.on svg { fill: var(--red); stroke: var(--red); }
   `],
 })
 export class ProductCardComponent {
@@ -80,6 +96,7 @@ export class ProductCardComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
   readonly busy = signal(false);
+  readonly fav = inject(FavoritesService);
 
   add() {
     if (!this.auth.isLoggedIn()) {
@@ -91,5 +108,12 @@ export class ProductCardComponent {
       next: () => this.busy.set(false),
       error: () => this.busy.set(false),
     });
+  }
+  like() {
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+    this.fav.toggle(this.product().id).subscribe({ error: () => {} });
   }
 }

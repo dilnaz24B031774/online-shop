@@ -163,6 +163,22 @@ const EN: Dict = {
   'common.loading': 'Loading…',
   'common.error': 'The server does not answer. Check that the backend is running.',
   'footer.text': 'Student project · Basics of Information Systems',
+
+  'nav.profile': 'Profile',
+  'nav.favorites': 'Favorites',
+  'product.like': 'Add to favorites',
+  'product.unlike': 'Remove from favorites',
+  'profile.title': 'My profile',
+  'profile.account': 'Personal data',
+  'profile.lastName': 'Last name',
+  'profile.phone': 'Phone',
+  'profile.language': 'Language',
+  'profile.save': 'Save changes',
+  'profile.saved': 'Changes saved.',
+  'profile.favorites': 'Favorite products',
+  'profile.noFavorites': 'No favorites yet. Tap the heart on any product to save it here.',
+  'profile.addresses': 'My addresses',
+  'profile.noAddresses': 'No saved addresses. You can add one at checkout.',
 };
 
 const RU: Dict = {
@@ -318,6 +334,22 @@ const RU: Dict = {
   'common.loading': 'Загрузка…',
   'common.error': 'Сервер не отвечает. Проверьте, что backend запущен.',
   'footer.text': 'Студенческий проект · Basics of Information Systems',
+
+    'nav.profile': 'Профиль',
+  'nav.favorites': 'Избранное',
+  'product.like': 'В избранное',
+  'product.unlike': 'Убрать из избранного',
+  'profile.title': 'Мой профиль',
+  'profile.account': 'Личные данные',
+  'profile.lastName': 'Фамилия',
+  'profile.phone': 'Телефон',
+  'profile.language': 'Язык',
+  'profile.save': 'Сохранить',
+  'profile.saved': 'Изменения сохранены.',
+  'profile.favorites': 'Избранные товары',
+  'profile.noFavorites': 'Пока ничего нет. Нажмите на сердечко у товара, чтобы сохранить его здесь.',
+  'profile.addresses': 'Мои адреса',
+  'profile.noAddresses': 'Сохранённых адресов нет. Их можно добавить при оформлении заказа.',
 };
 
 const KK: Dict = {
@@ -473,6 +505,23 @@ const KK: Dict = {
   'common.loading': 'Жүктелуде…',
   'common.error': 'Сервер жауап бермейді. Backend іске қосылғанын тексеріңіз.',
   'footer.text': 'Студенттік жоба · Basics of Information Systems',
+
+
+    'nav.profile': 'Профиль',
+  'nav.favorites': 'Таңдаулылар',
+  'product.like': 'Таңдаулыларға қосу',
+  'product.unlike': 'Таңдаулылардан алып тастау',
+  'profile.title': 'Менің профилім',
+  'profile.account': 'Жеке деректер',
+  'profile.lastName': 'Тегі',
+  'profile.phone': 'Телефон',
+  'profile.language': 'Тіл',
+  'profile.save': 'Сақтау',
+  'profile.saved': 'Өзгерістер сақталды.',
+  'profile.favorites': 'Таңдаулы тауарлар',
+  'profile.noFavorites': 'Әзірге ештеңе жоқ. Мұнда сақтау үшін тауардағы жүрекшені басыңыз.',
+  'profile.addresses': 'Менің мекенжайларым',
+  'profile.noAddresses': 'Сақталған мекенжай жоқ. Оны тапсырыс беру кезінде қосуға болады.',
 };
 
 const DICTS: Record<Lang, Dict> = { en: EN, ru: RU, kk: KK };

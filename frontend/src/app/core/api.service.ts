@@ -91,4 +91,20 @@ export class ApiService {
   cancelOrder(id: number): Observable<Order> {
     return this.http.post<Order>(`${API_URL}/orders/${id}/cancel/`, {});
   }
+
+   // favorites
+  favorites(): Observable<Product[]> {
+    return this.http.get<Product[]>(`${API_URL}/favorites/`);
+  }
+
+  addFavorite(productId: number): Observable<Product[]> {
+    return this.http.post<Product[]>(`${API_URL}/favorites/`, { product_id: productId });
+  }
+
+  removeFavorite(productId: number): Observable<Product[]> {
+    return this.http.delete<Product[]>(`${API_URL}/favorites/${productId}/`);
+  }
 }
+
+  
+

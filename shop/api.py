@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import services
-from .models import Address, CartItem, Category, Order, Product, Review
+from .models import Address, CartItem, Category, Favorite, Order, Product, Review
 from .serializers import (
     AddressSerializer, CartItemSerializer, CategorySerializer, OrderSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
@@ -141,6 +141,32 @@ def addresses(request):
         return Response(s.data, status=201)
     qs = Address.objects.filter(user=request.user).order_by("-is_default", "id")
     return Response(AddressSerializer(qs, many=True).data)
+
+
+# ---------------------------------------------------------------- favorites
+def _favorites_response(user):
+    """Liked products, newest like first (with rating and review count)."""
+    ids = list(Favorite.objects.filter(user=user).values_list("product_id", flat=True))
+    found = {p.id: p for p in _products().filter(id__in=ids)}
+    return Response(ProductSerializer([found[i] for i in ids if i in found], many=True).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def favorites(request):
+    """GET - list of liked products. POST {product_id} - like a product."""
+    if request.method == "POST":
+        product = get_object_or_404(Product, pk=request.data.get("product_id"), is_active=True)
+        Favorite.objects.get_or_create(user=request.user, product=product)
+    return _favorites_response(request.user)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def remove_favorite(request, product_id):
+    """DELETE /api/favorites/<product_id>/ - remove the like."""
+    Favorite.objects.filter(user=request.user, product_id=product_id).delete()
+    return _favorites_response(request.user)
 
 
 # ---------------------------------------------------------------- cart & orders

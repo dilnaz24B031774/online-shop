@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, Review, User,
+    Address,Favorite, CartItem, Category, Notification, Order, OrderItem, Payment, Product, Review, User,
 )
 
 
@@ -67,3 +67,4 @@ admin.site.register(Address)
 admin.site.register(CartItem)
 admin.site.register(Review)
 admin.site.register(Notification)
+admin.site.register(Favorite)
