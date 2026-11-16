@@ -1,3 +1,5 @@
+import type { CurrencyCode } from './currency.service';
+
 // Types that match the JSON from the Django REST API (shop/serializers.py)
 
 export interface Category {
@@ -47,6 +49,7 @@ export interface User {
   phone: string;
   role: 'customer' | 'manager' | 'admin';
   preferred_language: 'en' | 'ru' | 'kk';
+  preferred_currency: CurrencyCode;
 }
 
 export interface Address {
@@ -141,4 +144,28 @@ export interface PromoCheck {
   subtotal: string;
   discount: string;
   total: string;
+}
+
+
+export type ComplaintCategory = 'product' | 'delivery' | 'payment' | 'service' | 'other';
+export type ComplaintStatus = 'new' | 'in_progress' | 'resolved';
+
+export interface Complaint {
+  id: number;
+  order: number | null;
+  category: ComplaintCategory;
+  subject: string;
+  message: string;
+  status: ComplaintStatus;
+  staff_response: string;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplaintInput {
+  order: number | null;
+  category: ComplaintCategory;
+  subject: string;
+  message: string;
 }

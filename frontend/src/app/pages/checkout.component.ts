@@ -8,6 +8,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { CartService } from '../core/cart.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Address, CardInput, Order, PromoCheck } from '../core/models';
 
 @Component({
@@ -20,7 +21,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
           <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#E3F4EA"/><path d="M20 33l8 8 16-17" fill="none" stroke="#2F8F5B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <h1>{{ i.t(o.status === 'paid' ? 'checkout.done' : 'checkout.accepted', { n: o.id }) }}</h1>
           <p>{{ i.t('checkout.doneText') }}</p>
-          <p class="total">\${{ o.total_amount }} · {{ i.t('pay.' + o.payment_method) }}
+          <p class="total">{{ money.format(o.total_amount) }} · {{ i.t('pay.' + o.payment_method) }}
             @if (o.card_last4) { · {{ o.card_brand | uppercase }} •••• {{ o.card_last4 }} }
             · <span class="pay-badge" [class]="'pay-badge p-' + o.payment_status">{{ i.t('status.' + o.payment_status) }}</span>
           </p>
@@ -30,20 +31,20 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
               <div>
                 <strong>{{ i.t('qr.scan') }}</strong>
                 <p class="muted">{{ i.t('qr.steps') }}</p>
-                <p class="qr-sum">\${{ o.total_amount }} · {{ i.t('transfer.purposeText', { n: o.id }) }}</p>
+                <p class="qr-sum">{{ money.format(o.total_amount) }} · {{ i.t('transfer.purposeText', { n: o.id }) }}</p>
                 <button type="button" class="btn btn-primary" (click)="payQr(o.id)" [disabled]="busy()">{{ i.t('qr.paid') }}</button>
                 <small class="muted demo-note">{{ i.t('qr.demo') }}</small>
               </div>
             </div>
           }
           @if (o.installment_months) {
-            <p class="monthly">{{ i.t('inst.monthly') }}: <b>\${{ (+o.total_amount / o.installment_months).toFixed(2) }}</b> × {{ o.installment_months }}</p>
+            <p class="monthly">{{ i.t('inst.monthly') }}: <b>{{ money.format(+o.total_amount / o.installment_months) }}</b> × {{ o.installment_months }}</p>
           }
           @if (o.payment_method === 'bank_transfer') {
             <dl class="requisites">
               <div><dt>{{ i.t('transfer.receiver') }}</dt><dd>ТОО «Sauda» (demo)</dd></div>
               <div><dt>IBAN</dt><dd>KZ00 0000 0000 0000 0000</dd></div>
-              <div><dt>{{ i.t('transfer.amount') }}</dt><dd>\${{ o.total_amount }}</dd></div>
+              <div><dt>{{ i.t('transfer.amount') }}</dt><dd>{{ money.format(o.total_amount) }}</dd></div>
               <div><dt>{{ i.t('transfer.purpose') }}</dt><dd>{{ i.t('transfer.purposeText', { n: o.id }) }}</dd></div>
             </dl>
           }
@@ -143,7 +144,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
                       </button>
                     }
                   </div>
-                  <p class="monthly">{{ i.t('inst.monthly') }}: <b>\${{ monthly() }}</b> × {{ installmentMonths }} · {{ i.t('inst.noOver') }}</p>
+                  <p class="monthly">{{ i.t('inst.monthly') }}: <b>{{ money.format(monthly()) }}</b> × {{ installmentMonths }} · {{ i.t('inst.noOver') }}</p>
                 </div>
               } @else if (method === 'bank_transfer') {
                 <div class="info-box">
@@ -159,7 +160,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
           <aside class="panel summary">
             @if (cart.cart(); as c) {
               @for (item of c.items; track item.id) {
-                <div class="line"><span>{{ i.pick(item.product) }} × {{ item.quantity }}</span><span>\${{ item.line_total }}</span></div>
+                <div class="line"><span>{{ i.pick(item.product) }} × {{ item.quantity }}</span><span>{{ money.format(item.line_total) }}</span></div>
               }
               <div class="promo">
                 <label for="promo">{{ i.t('promo.label') }}</label>
@@ -180,11 +181,11 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
                 }
               </div>
               @if (promo(); as pr) {
-                <div class="line"><span>{{ i.t('promo.subtotal') }}</span><span>\${{ c.total }}</span></div>
-                <div class="line discount"><span>{{ i.t('promo.discount') }} −{{ pr.percent }}%</span><span>−\${{ pr.discount }}</span></div>
-                <div class="line total"><span>{{ i.t('cart.total') }}</span><strong>\${{ pr.total }}</strong></div>
+                <div class="line"><span>{{ i.t('promo.subtotal') }}</span><span>{{ money.format(c.total) }}</span></div>
+                <div class="line discount"><span>{{ i.t('promo.discount') }} −{{ pr.percent }}%</span><span>−{{ money.format(pr.discount) }}</span></div>
+                <div class="line total"><span>{{ i.t('cart.total') }}</span><strong>{{ money.format(pr.total) }}</strong></div>
               } @else {
-                <div class="line total"><span>{{ i.t('cart.total') }}</span><strong>\${{ c.total }}</strong></div>
+                <div class="line total"><span>{{ i.t('cart.total') }}</span><strong>{{ money.format(c.total) }}</strong></div>
               }
             }
             @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
@@ -272,6 +273,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
 })
 export class CheckoutComponent implements OnInit {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   readonly cart = inject(CartService);
   private api = inject(ApiService);
 
@@ -363,9 +365,9 @@ export class CheckoutComponent implements OnInit {
     return null;
   }
 
-  monthly(): string {
+  monthly(): number {
     const total = +(this.promo()?.total ?? this.cart.cart()?.total ?? 0);
-    return (total / this.installmentMonths).toFixed(2);
+    return total / this.installmentMonths;
   }
 
   payQr(id: number) {

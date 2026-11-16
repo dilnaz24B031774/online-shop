@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import api, auth_views
+from . import api, auth_views, complaints_api
 
 urlpatterns = [
     # catalogue (open for everyone)
@@ -20,7 +20,12 @@ urlpatterns = [
     path("auth/challenge/", auth_views.challenge),
     path("auth/refresh/", TokenRefreshView.as_view()),      # {refresh} -> new access token
     path("me/", api.me),
+    path("me/password/", api.change_password),
     path("addresses/", api.addresses),
+
+    # private customer complaints and staff responses
+    path("complaints/", complaints_api.complaints),
+    path("complaints/<int:pk>/", complaints_api.complaint_detail),
 
     # cart and orders (login required)
     path("cart/", api.cart),

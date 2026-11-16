@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AppNotification, Address, Cart, CardInput, Category, Order, Product, ProductDetail, ProductFilters, PromoCheck, Review,
+  AppNotification, Address, Cart, CardInput, Category, Complaint, ComplaintInput, Order, Product, ProductDetail, ProductFilters, PromoCheck, Review,
   SearchResult, Tokens, User,
 } from './models';
 
@@ -95,12 +95,28 @@ export class ApiService {
     return this.http.patch<User>(`${API_URL}/me/`, data);
   }
 
+  changePassword(data: { current_password: string; new_password: string; new_password_confirm: string }): Observable<Tokens & { detail: string }> {
+    return this.http.post<Tokens & { detail: string }>(`${API_URL}/me/password/`, data);
+  }
+
   addresses(): Observable<Address[]> {
     return this.http.get<Address[]>(`${API_URL}/addresses/`);
   }
 
   addAddress(data: Partial<Address>): Observable<Address> {
     return this.http.post<Address>(`${API_URL}/addresses/`, data);
+  }
+
+  complaints(): Observable<Complaint[]> {
+    return this.http.get<Complaint[]>(`${API_URL}/complaints/`);
+  }
+
+  createComplaint(data: ComplaintInput): Observable<Complaint> {
+    return this.http.post<Complaint>(`${API_URL}/complaints/`, data);
+  }
+
+  complaint(id: number): Observable<Complaint> {
+    return this.http.get<Complaint>(`${API_URL}/complaints/${id}/`);
   }
 
   // cart and orders

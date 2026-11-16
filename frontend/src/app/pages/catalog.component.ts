@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Category, Product, ProductFilters } from '../core/models';
 import { ProductCardComponent } from '../shared/product-card.component';
 
@@ -36,15 +37,15 @@ import { ProductCardComponent } from '../shared/product-card.component';
           </div>
 
           <fieldset>
-            <legend>{{ i.t('filter.price') }}</legend>
+            <legend>{{ priceLabel() }}</legend>
             <div class="price">
-              <input type="number" min="0" [placeholder]="i.t('filter.from') + ' ' + (options()?.min_price ?? '')"
-                     [ngModel]="min_price() ?? ''" (change)="setParam('min_price', $any($event.target).value)"
-                     [attr.aria-label]="i.t('filter.price') + ' ' + i.t('filter.from')" />
+              <input type="number" min="0" step="0.01" [placeholder]="i.t('filter.from') + ' ' + money.inputValue(options()?.min_price)"
+                     [ngModel]="money.inputValue(min_price())" (change)="setPriceParam('min_price', $any($event.target).value)"
+                     [attr.aria-label]="priceLabel() + ' ' + i.t('filter.from')" />
               <span>–</span>
-              <input type="number" min="0" [placeholder]="i.t('filter.to') + ' ' + (options()?.max_price ?? '')"
-                     [ngModel]="max_price() ?? ''" (change)="setParam('max_price', $any($event.target).value)"
-                     [attr.aria-label]="i.t('filter.price') + ' ' + i.t('filter.to')" />
+              <input type="number" min="0" step="0.01" [placeholder]="i.t('filter.to') + ' ' + money.inputValue(options()?.max_price)"
+                     [ngModel]="money.inputValue(max_price())" (change)="setPriceParam('max_price', $any($event.target).value)"
+                     [attr.aria-label]="priceLabel() + ' ' + i.t('filter.to')" />
             </div>
           </fieldset>
 
@@ -164,6 +165,7 @@ import { ProductCardComponent } from '../shared/product-card.component';
 })
 export class CatalogComponent implements OnInit {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   private router = inject(Router);
 
@@ -178,6 +180,7 @@ export class CatalogComponent implements OnInit {
   readonly in_stock = input<string>();
 
   readonly ratings = ['', '3', '4', '4.5'];
+  readonly priceLabel = computed(() => this.i.t('filter.price').replace(/,?\s*\$$/, '') + ', ' + this.money.currency());
   readonly options = signal<ProductFilters | null>(null);
   readonly selectedBrands = computed(() => (this.brand() ?? '').split(',').filter(Boolean));
   readonly hasFilters = computed(() =>
@@ -215,6 +218,14 @@ export class CatalogComponent implements OnInit {
 
   setParam(name: string, value: string) {
     this.router.navigate([], { queryParams: { [name]: value || null }, queryParamsHandling: 'merge' });
+  }
+
+  setPriceParam(name: 'min_price' | 'max_price', value: string) {
+    // Keep URLs and API bounds in USD so changing display currency never changes the result set.
+    if (!value.trim()) { this.setParam(name, ''); return; }
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0) return;
+    this.setParam(name, String(Number(this.money.toBase(amount).toFixed(6))));
   }
 
   toggleBrand(brand: string) {

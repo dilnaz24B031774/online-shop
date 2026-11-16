@@ -1,0 +1,51 @@
+<div class="complaints-page">
+  <div class="container page">
+    <div class="page-heading">
+      <div><p class="eyebrow">Sauda · {{ i.t('complaints.support') }}</p><h1>{{ i.t('complaints.title') }}</h1><p class="muted">{{ i.t('complaints.subtitle') }}</p></div>
+      <a routerLink="/orders" class="back-link">{{ i.t('nav.orders') }} <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="complaints-layout">
+      <section class="panel compose" aria-labelledby="complaint-new-title">
+        <div class="card-heading"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-1 2V11.5a9 9 0 0 1 18 0Z"/><path d="M8 9h8M8 13h5"/></svg></span><div><h2 id="complaint-new-title">{{ i.t('complaints.new') }}</h2><p>{{ i.t('complaints.formHint') }}</p></div></div>
+        <p class="privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>{{ i.t('complaints.privacy') }}</p>
+        @if (sentId(); as id) { <div class="alert alert-ok" role="status" aria-live="polite">{{ i.t('complaints.sent', { n: id }) }}</div> }
+        <form (ngSubmit)="submit()" novalidate>
+          @if (errors()['form']) { <div class="alert alert-error" role="alert">{{ errors()['form'] }}</div> }
+          <fieldset [disabled]="busy()" [attr.aria-busy]="busy()">
+            <div class="field"><label for="complaint-subject">{{ i.t('complaints.subject') }} <span aria-hidden="true">*</span></label><input id="complaint-subject" name="subject" [(ngModel)]="form.subject" (ngModelChange)="edited('subject')" maxlength="150" required [placeholder]="i.t('complaints.subjectPlaceholder')" [attr.aria-invalid]="!!errors()['subject']" aria-describedby="complaint-subject-error"/><small id="complaint-subject-error" class="field-error" role="alert">{{ errors()['subject'] }}</small></div>
+            <div class="field"><label for="complaint-category">{{ i.t('complaints.category') }}</label><select id="complaint-category" name="category" [(ngModel)]="form.category" (ngModelChange)="edited('category')" [attr.aria-invalid]="!!errors()['category']" aria-describedby="complaint-category-error">@for (category of categories; track category) { <option [value]="category">{{ i.t('complaints.category.' + category) }}</option> }</select><small id="complaint-category-error" class="field-error" role="alert">{{ errors()['category'] }}</small></div>
+            <div class="field"><label for="complaint-order">{{ i.t('complaints.order') }} <small>{{ i.t('complaints.optional') }}</small></label><select id="complaint-order" name="order" [(ngModel)]="form.order" (ngModelChange)="selectOrder()" [disabled]="ordersLoading() || ordersError() || busy()" [attr.aria-invalid]="!!errors()['order']" aria-describedby="complaint-order-error complaint-order-hint"><option [ngValue]="null">{{ i.t(ordersLoading() ? 'common.loading' : 'complaints.noOrder') }}</option>@for (order of orders(); track order.id) { <option [ngValue]="order.id">{{ i.t('complaints.orderNumber', { n: order.id }) }} · {{ date(order.created_at) }}</option> }</select><small id="complaint-order-error" class="field-error" role="alert">{{ errors()['order'] }}</small><div id="complaint-order-hint">@if (ordersError()) { <p class="order-note" role="alert">{{ i.t('complaints.ordersError') }} <button class="text-button" type="button" (click)="loadOrders()">{{ i.t('complaints.retry') }}</button></p> } @else if (orderUnavailable()) { <p class="order-note" role="status">{{ i.t('complaints.orderUnavailable') }}</p> }</div></div>
+            <div class="field"><label for="complaint-message">{{ i.t('complaints.message') }} <span aria-hidden="true">*</span></label><textarea id="complaint-message" name="message" [(ngModel)]="form.message" (ngModelChange)="edited('message')" rows="6" minlength="10" maxlength="5000" required [placeholder]="i.t('complaints.messagePlaceholder')" [attr.aria-invalid]="!!errors()['message']" aria-describedby="complaint-message-hint complaint-message-error"></textarea><div class="message-meta"><small id="complaint-message-hint">{{ i.t('complaints.messageHint') }}</small><small aria-hidden="true">{{ form.message.length }} / 5000</small></div><small id="complaint-message-error" class="field-error" role="alert">{{ errors()['message'] }}</small></div>
+            <button type="submit" class="btn btn-primary btn-block" [disabled]="busy()">{{ i.t(busy() ? 'complaints.sending' : 'complaints.send') }} <span aria-hidden="true">↗</span></button>
+          </fieldset>
+        </form>
+      </section>
+      <section class="history" aria-labelledby="complaint-history-title">
+        <div class="history-heading"><div><h2 id="complaint-history-title">{{ i.t('complaints.history') }}</h2><p>{{ i.t('complaints.historyHint') }}</p></div><button type="button" class="refresh" (click)="loadComplaints()" [disabled]="loading()" [attr.aria-label]="i.t('complaints.refresh')" [attr.title]="i.t('complaints.refresh')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3"/></svg></button></div>
+        @if (loading() && !items().length) { <div class="panel state" role="status">{{ i.t('common.loading') }}</div> }
+        @if (loadError()) { <div class="panel state"><p role="alert">{{ i.t('complaints.loadError') }}</p><button type="button" class="btn btn-ghost" (click)="loadComplaints()">{{ i.t('complaints.retry') }}</button></div> }
+        @if (!loading() && !loadError() && !items().length) {
+          <div class="panel state empty"><span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5V3ZM8 7h8M8 11h8M8 15h5"/></svg></span><h3>{{ i.t('complaints.emptyTitle') }}</h3><p>{{ i.t('complaints.emptyText') }}</p></div>
+        }
+        <div class="complaint-list">
+          @for (complaint of items(); track complaint.id) {
+            <article class="panel complaint-card" [class.open]="expanded() === complaint.id">
+              <div class="ticket-meta"><span class="ticket-id">{{ i.t('complaints.ticket', { n: complaint.id }) }}</span><span [class]="'status status-' + complaint.status">{{ i.t('complaints.status.' + complaint.status) }}</span></div>
+              <h3><button type="button" class="ticket-toggle" (click)="toggle(complaint.id)" [attr.aria-expanded]="expanded() === complaint.id" [attr.aria-controls]="'complaint-detail-' + complaint.id">{{ complaint.subject }}<span aria-hidden="true">{{ expanded() === complaint.id ? '−' : '+' }}</span></button></h3>
+              <div class="ticket-info"><span>{{ i.t('complaints.category.' + complaint.category) }}</span><span aria-hidden="true">·</span><time [attr.datetime]="complaint.created_at">{{ date(complaint.created_at) }}</time></div>
+              @if (expanded() === complaint.id) {
+                <div class="ticket-detail" [id]="'complaint-detail-' + complaint.id">
+                  @if (complaint.order) { <a routerLink="/orders" class="order-link">{{ i.t('complaints.orderNumber', { n: complaint.order }) }} ↗</a> }
+                  <p class="message-body">{{ complaint.message }}</p>
+                  @if (complaint.staff_response) {
+                    <div class="staff-response"><div class="response-heading"><span>{{ i.t('complaints.response') }}</span>@if (complaint.replied_at) { <time [attr.datetime]="complaint.replied_at">{{ date(complaint.replied_at) }}</time> }</div><p class="message-body">{{ complaint.staff_response }}</p></div>
+                  } @else { <p class="waiting"><span aria-hidden="true">◷</span> {{ i.t('complaints.waiting') }}</p> }
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

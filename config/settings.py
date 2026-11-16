@@ -166,6 +166,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    # Invalidate tokens from other sessions after the user changes a password.
+    "CHECK_REVOKE_TOKEN": True,
+    "TOKEN_REFRESH_SERIALIZER": "shop.serializers.PasswordAwareTokenRefreshSerializer",
 }
 
 # The Angular dev server runs on port 4200

@@ -5,6 +5,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { API_URL, ApiService } from './core/api.service';
 import { AuthService } from './core/auth.service';
 import { CartService } from './core/cart.service';
+import { CurrencyService } from './core/currency.service';
 import { I18nService, LANGS } from './core/i18n.service';
 import { Category } from './core/models';
 import { AssistantComponent } from './shared/assistant.component';
@@ -20,6 +21,7 @@ export class AppComponent implements OnInit {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   private router = inject(Router);
 

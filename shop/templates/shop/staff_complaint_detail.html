@@ -1,0 +1,21 @@
+{% extends 'shop/staff_base.html' %}
+{% block title %}Обращение #{{ complaint.pk }}{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Книга жалоб</p><h1>Обращение #{{ complaint.pk }}</h1><p class="intro">{{ complaint.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_complaint_status.html' with status=complaint.status %}</p></div><a class="button secondary" href="{% url 'staff_complaints' %}">← Все обращения</a></div>
+<div class="grid-two">
+  <section class="panel"><div class="panel-head"><h2 style="overflow-wrap:anywhere">{{ complaint.subject }}</h2></div><div class="panel-body">
+    <dl class="detail-list"><div><dt>Категория</dt><dd>{{ complaint.get_category_display }}</dd></div><div><dt>Покупатель</dt><dd>{{ complaint.user.get_full_name|default:complaint.user.username }} <span class="muted">(@{{ complaint.user.username }})</span></dd></div>
+    {% if complaint.order_id %}<div><dt>Связанный заказ</dt><dd>{% if perms.shop.view_order or perms.shop.change_order %}<a href="{% url 'staff_order_detail' complaint.order_id %}">Заказ #{{ complaint.order_id }}</a>{% else %}Заказ #{{ complaint.order_id }}{% endif %}</dd></div>{% endif %}
+    <div><dt>Текст обращения</dt><dd style="overflow-wrap:anywhere;line-height:1.7">{{ complaint.message|linebreaksbr }}</dd></div></dl>
+  </div></section>
+  <section class="panel"><div class="panel-head"><h2>{% if can_respond %}Ответ и статус{% else %}Ответ магазина{% endif %}</h2></div>
+    {% if can_respond %}<form method="post">{% csrf_token %}<div class="panel-body">
+      {{ form.non_field_errors }}
+      <div class="field" style="margin-bottom:20px"><label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>{{ form.status }}{{ form.status.errors }}</div>
+      <div class="field"><label for="{{ form.staff_response.id_for_label }}">{{ form.staff_response.label }}</label>{{ form.staff_response }}{{ form.staff_response.errors }}<small id="id_staff_response_helptext">{{ form.staff_response.help_text }}</small></div>
+      {% if complaint.replied_at %}<p class="section-note" style="margin-top:18px">Последний ответ: {{ complaint.replied_at|date:'d.m.Y, H:i' }}{% if complaint.responded_by %} · {{ complaint.responded_by.get_full_name|default:complaint.responded_by.username }}{% endif %}</p>{% endif %}
+    </div><div class="form-actions"><button class="button" type="submit">Сохранить ответ и статус</button></div></form>
+    {% else %}<div class="panel-body">{% if complaint.staff_response %}<p style="overflow-wrap:anywhere;line-height:1.7">{{ complaint.staff_response|linebreaksbr }}</p><p class="section-note">{{ complaint.replied_at|date:'d.m.Y, H:i' }}</p>{% else %}<p class="section-note">Ответ пока не опубликован.</p>{% endif %}<p class="section-note" style="margin-top:18px">У вас есть доступ только для просмотра обращений.</p></div>{% endif %}
+  </section>
+</div>
+{% endblock %}

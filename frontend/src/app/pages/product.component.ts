@@ -7,6 +7,7 @@ import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { CartService } from '../core/cart.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { ProductDetail } from '../core/models';
 import { ProductImageComponent } from '../shared/product-image.component';
 import { StarsComponent } from '../shared/stars.component';
@@ -33,7 +34,7 @@ import { StarsComponent } from '../shared/stars.component';
 
             <div class="buy panel">
               <div class="price-row">
-                <span class="price">\${{ p.price }}</span>
+                <span class="price">{{ money.format(p.price) }}</span>
                 @if (p.stock_quantity === 0) {
                   <span class="stock out">{{ i.t('product.soldOut') }}</span>
                 } @else if (p.stock_quantity < 10) {
@@ -155,6 +156,7 @@ import { StarsComponent } from '../shared/stars.component';
 })
 export class ProductComponent {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
   private api = inject(ApiService);

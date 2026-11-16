@@ -12,5 +12,7 @@ export const routes: Routes = [
   { path: 'cart', canActivate: [authGuard], loadComponent: () => import('./pages/cart.component').then(m => m.CartComponent) },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./pages/orders.component').then(m => m.OrdersComponent) },
+  { path: 'settings', canActivate: [authGuard], loadComponent: () => import('./pages/settings.component').then(m => m.SettingsComponent) },
+  { path: 'complaints', canActivate: [authGuard], loadComponent: () => import('./pages/complaints.component').then(m => m.ComplaintsComponent) },
   { path: '**', redirectTo: '' },
 ];

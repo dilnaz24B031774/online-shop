@@ -34,11 +34,13 @@
     <div class="actions">
       @if (auth.isLoggedIn()) {
         <div class="account">
-          <span class="avatar">{{ (auth.user()?.first_name || auth.user()?.username || '?').charAt(0).toUpperCase() }}</span>
-          <span class="who">
-            <small>{{ i.t('nav.hello') }},</small>
-            <strong>{{ auth.user()?.first_name || auth.user()?.username }}</strong>
-          </span>
+          <a routerLink="/settings" routerLinkActive="on" class="account-profile" [attr.aria-label]="i.t('nav.settings')" [attr.title]="i.t('nav.settings')">
+            <span class="avatar">{{ (auth.user()?.first_name || auth.user()?.username || '?').charAt(0).toUpperCase() }}</span>
+            <span class="who">
+              <small>{{ i.t('nav.hello') }},</small>
+              <strong>{{ auth.user()?.first_name || auth.user()?.username }}</strong>
+            </span>
+          </a>
           <button type="button" class="logout" (click)="auth.logout()">{{ i.t('nav.logout') }}</button>
         </div>
       } @else {
@@ -57,7 +59,7 @@
         </span>
         <span class="cart-text">
           <small>{{ i.t('nav.cart') }}</small>
-          <strong>${{ cart.cart()?.total ?? '0.00' }}</strong>
+          <strong>{{ money.format(cart.cart()?.total ?? '0.00') }}</strong>
         </span>
       </a>
     </div>
@@ -75,6 +77,8 @@
       <span class="spacer"></span>
       @if (auth.isLoggedIn()) {
         <a routerLink="/orders" routerLinkActive="active" class="strong">{{ i.t('nav.orders') }}</a>
+        <a routerLink="/settings" routerLinkActive="active" class="strong">{{ i.t('nav.settings') }}</a>
+        <a routerLink="/complaints" routerLinkActive="active" class="strong">{{ i.t('nav.complaints') }}</a>
       }
       @if (auth.user()?.role === 'admin' || auth.user()?.role === 'manager') {
         <a [href]="adminUrl" target="_blank" rel="noopener" class="strong">{{ i.t('nav.admin') }}</a>
@@ -108,6 +112,8 @@
       <h3>{{ i.t('footer.account') }}</h3>
       <a routerLink="/orders">{{ i.t('nav.orders') }}</a>
       <a routerLink="/cart">{{ i.t('nav.cart') }}</a>
+      @if (auth.isLoggedIn()) { <a routerLink="/settings">{{ i.t('nav.settings') }}</a> }
+      <a routerLink="/complaints">{{ i.t('nav.complaints') }}</a>
       <a routerLink="/login">{{ i.t('nav.login') }}</a>
       <a routerLink="/register">{{ i.t('auth.register') }}</a>
     </div>

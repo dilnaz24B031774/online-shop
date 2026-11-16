@@ -80,6 +80,8 @@ Password for all: `Shop2026!`
 ## Features
 
 - Registration and login with JWT tokens, password rules (min 8 chars, a digit, a capital letter)
+- Customer settings at `/settings`: username, first and last name, phone, display currency and password changes
+- Private complaints book at `/complaints`: customers submit complaints, optionally link their own order, and see staff replies and progress
 - Catalogue in 3 languages (EN / RU / KK), search by products, categories and own orders
 - **Filters:** price from–to, brand, rating, only in stock; sort by price, name, rating, popularity
 - Cart and checkout in one database transaction (two people cannot buy the last item)
@@ -92,15 +94,33 @@ Password for all: `Shop2026!`
 - Roles: customer, manager, admin
 - Login protection: after 3 wrong tries a small math check, after 5 — block for 5 minutes
 
+Settings are saved to the customer's account. Changing a password requires the current
+password and confirmation; other sessions are signed out while the current session
+receives new tokens. Currency selection applies to the catalogue, cart and orders.
+Amounts are stored in USD; this study project uses fixed demonstration rates for
+display (1 USD = 500 KZT / 0.92 EUR / 90 RUB), rather than live exchange rates.
+
 ## Database
 
-11 shop tables: `users`, `addresses`, `categories`, `products`, `cart_items`, `orders`,
-`order_items`, `payments`, `reviews`, `notifications`, `promo_codes`
+12 shop tables: `users`, `addresses`, `categories`, `products`, `cart_items`, `orders`,
+`order_items`, `payments`, `reviews`, `notifications`, `promo_codes`, `complaints`
 plus 2 tables for login protection. ERD: `docs/erd.mmd`.
 
 Rules are checked by the database itself (CHECK and UNIQUE constraints), for example:
 price > 0, stock ≥ 0, rating 1–5, one review per user and product,
 promo discount 1–90 %, promo used count not more than the limit.
+
+## Complaints book
+
+Customers open `/complaints` from their account, the footer, or an order's problem
+link. A complaint has a subject, category, message, and optional order reference.
+Each customer can read only their own complaints and can link only their own orders.
+
+Employees use `/staff/complaints/` to search and filter complaints, reply, and change
+the status from new to in progress or resolved. Resolving a complaint requires a reply.
+The managed manager group receives view/change complaint permissions after migration;
+other employees need those permissions explicitly. Customer messages are read-only
+for employees, and complaints are not published to other shoppers.
 
 ## Promo codes
 
@@ -129,6 +149,10 @@ Or in Django admin: Users → select users → action "Send Black Friday notific
 | GET | `/api/products/filters/` (brands and price range) | – |
 | GET | `/api/products/{id}/`, `/api/categories/`, `/api/search/?q=` | – |
 | POST | `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/` | – |
+| GET/PATCH | `/api/me/` (profile and preferences) | ✔ |
+| POST | `/api/me/password/` `{current_password, new_password, new_password_confirm}` | ✔ |
+| GET/POST | `/api/complaints/` (own complaints only) | ✔ |
+| GET | `/api/complaints/{id}/` (owner only) | ✔ |
 | GET/POST | `/api/cart/` | ✔ |
 | POST | `/api/promo/check/` `{code}` | ✔ |
 | POST | `/api/checkout/` `{address_id, method, promo_code}` | ✔ |
@@ -141,8 +165,9 @@ Or in Django admin: Users → select users → action "Send Black Friday notific
 python3 manage.py test shop
 ```
 
-141 tests: database rules, checkout transaction, passwords, refunds, promo codes, filters,
-notifications, staff panel, login protection.
+Tests cover database rules, checkout transactions, passwords, refunds, promo codes,
+filters, notifications, staff permissions, login protection, account settings and
+private complaints.
 
 ## Migrations note
 

@@ -5,6 +5,7 @@ Login uses JWT tokens: the frontend sends  Authorization: Bearer <access token>
 from django.core.exceptions import ValidationError as DjangoValidationError
 from decimal import Decimal, InvalidOperation
 
+from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -14,11 +15,11 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import payments, services
-from .models import Address, CartItem, Category, Notification, Order, Product, Review
+from .models import Address, CartItem, Category, Notification, Order, Product, Review, User
 from .serializers import (
     AddressSerializer, CartItemSerializer, CategorySerializer, NotificationSerializer, OrderSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
-    UserSerializer,
+    ChangePasswordSerializer, UserSerializer,
 )
 
 
@@ -186,6 +187,23 @@ def me(request):
         s.is_valid(raise_exception=True)
         s.save()
     return Response(UserSerializer(request.user).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    # Check the current password while locking the row, so concurrent changes
+    # cannot both validate the same old password.
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        serializer = ChangePasswordSerializer(data=request.data, context={"user": user})
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        tokens = _tokens(user)
+    response = Response({"detail": "Password updated successfully.", **tokens})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @api_view(["GET", "POST"])

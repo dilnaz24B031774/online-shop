@@ -21,7 +21,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(request).pipe(
     catchError((err: HttpErrorResponse) => {
       // token expired or wrong -> log out and ask to sign in again
-      if (err.status === 401 && token && isOurApi && !isPublicAuth) {
+      // A password change replaces the tokens. Ignore failures from requests
+      // that were already in flight with the previous token.
+      const passwordRequest = req.url === `${API_URL}/me/password/`;
+      if (err.status === 401 && token && auth.token() === token && (!auth.passwordChanging() || passwordRequest) && isOurApi && !isPublicAuth) {
         auth.logout(false);
         router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
       }

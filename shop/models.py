@@ -51,11 +51,20 @@ class User(AbstractUser):
         RU = "ru", "Русский"
         KK = "kk", "Қазақша"
 
+    class Currency(models.TextChoices):
+        USD = "USD", "US dollar"
+        KZT = "KZT", "Kazakhstani tenge"
+        EUR = "EUR", "Euro"
+        RUB = "RUB", "Russian ruble"
+
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, blank=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     preferred_language = models.CharField(
         max_length=2, choices=Language.choices, default=Language.EN
+    )
+    preferred_currency = models.CharField(
+        max_length=3, choices=Currency.choices, default=Currency.USD
     )
 
     class Meta:
@@ -68,6 +77,10 @@ class User(AbstractUser):
             models.CheckConstraint(
                 condition=Q(preferred_language__in=["en", "ru", "kk"]),
                 name="user_language_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(preferred_currency__in=["USD", "KZT", "EUR", "RUB"]),
+                name="user_currency_valid",
             ),
         ]
 
@@ -403,3 +416,54 @@ class LoginChallenge(models.Model):
 
     class Meta:
         db_table = "login_challenges"
+
+
+class Complaint(models.Model):
+    """Private customer complaints and the shop's response."""
+
+    class Category(models.TextChoices):
+        PRODUCT = "product", "Товар"
+        DELIVERY = "delivery", "Доставка"
+        PAYMENT = "payment", "Оплата"
+        SERVICE = "service", "Обслуживание"
+        OTHER = "other", "Другое"
+
+    class Status(models.TextChoices):
+        NEW = "new", "Новое"
+        IN_PROGRESS = "in_progress", "В работе"
+        RESOLVED = "resolved", "Решено"
+
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name="complaints")
+    order = models.ForeignKey(
+        Order, on_delete=models.SET_NULL, null=True, blank=True, related_name="complaints",
+    )
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.OTHER)
+    subject = models.CharField(max_length=150)
+    message = models.TextField(max_length=5000)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
+    staff_response = models.TextField(max_length=5000, blank=True, default="")
+    responded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="complaint_responses",
+    )
+    replied_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "complaints"
+        ordering = ["-created_at", "-pk"]
+        verbose_name = "обращение покупателя"
+        verbose_name_plural = "книга жалоб"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(category__in=["product", "delivery", "payment", "service", "other"]),
+                name="complaint_category_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["new", "in_progress", "resolved"]),
+                name="complaint_status_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"#{self.pk} {self.subject}"

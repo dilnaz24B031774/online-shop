@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, PromoCode, Review, User,
+    Address, CartItem, Category, Complaint, Notification, Order, OrderItem, Payment, Product, PromoCode, Review, User,
 )
 from .roles import MANAGER_GROUP, ROLE_CHOICES, sync_role_access
 
@@ -306,3 +306,36 @@ class PromoCodeAdmin(admin.ModelAdmin):
     list_editable = ("is_active",)
     search_fields = ("code",)
     readonly_fields = ("used_count", "created_at")
+
+
+@admin.register(Complaint)
+class ComplaintAdmin(admin.ModelAdmin):
+    """The staff inbox is the only write path, preserving response validation."""
+
+    list_display = ("id", "subject", "user", "category", "status", "created_at", "process_complaint")
+    list_filter = ("status", "category", "created_at")
+    search_fields = ("subject", "message", "user__username")
+    list_select_related = ("user", "order", "responded_by")
+    list_per_page = 25
+    actions = None
+    fields = (
+        "process_complaint", "user", "order", "category", "subject", "message", "status",
+        "staff_response", "responded_by", "replied_at", "created_at", "updated_at",
+    )
+    readonly_fields = fields
+
+    @admin.display(description="Обработка")
+    def process_complaint(self, obj):
+        return format_html(
+            '<a href="{}">Открыть обращение в панели</a>',
+            reverse("staff_complaint_detail", args=[obj.pk]),
+        )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
