@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 
 import { authGuard } from './core/auth.guard';
 
@@ -11,8 +12,8 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./pages/register.component').then(m => m.RegisterComponent) },
   { path: 'cart', canActivate: [authGuard], loadComponent: () => import('./pages/cart.component').then(m => m.CartComponent) },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
-  { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./pages/orders.component').then(m => m.OrdersComponent) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
-  { path: 'favorites', canActivate: [authGuard], loadComponent: () => import('./pages/favorites.component').then(m => m.FavoritesComponent) },
+  // "My orders" is now a tab of the profile; old links to /orders still work
+  { path: 'orders', redirectTo: () => inject(Router).parseUrl('/profile?tab=orders') },
   { path: '**', redirectTo: '' },
 ];

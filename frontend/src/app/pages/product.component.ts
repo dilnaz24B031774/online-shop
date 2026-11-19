@@ -1,5 +1,5 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DOCUMENT, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -29,10 +29,20 @@ import { FavoritesService } from '../core/favorites.service';
             <a class="chip" [routerLink]="['/catalog']" [queryParams]="{ category: p.category.id }">{{ i.pick(p.category) }}</a>
             <h1>{{ i.pick(p) }}</h1>
             <app-stars [value]="p.avg_rating" [count]="p.review_count" />
-            <button type="button" class="like-btn" [class.on]="fav.isLiked(p.id)" (click)="toggleLike(p.id)">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
-              {{ fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like') }}
-            </button>
+
+            <div class="actions">
+              <button type="button" class="like-btn" [class.on]="fav.isLiked(p.id)" (click)="toggleLike(p.id)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
+                {{ fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like') }}
+              </button>
+
+              <!-- opens WhatsApp with the product name, price and link -->
+              <a class="share-btn" [href]="waLink(p)" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3z"/><path d="M9 8.5c0 3 3.5 6.5 6.5 6.5l1-1.5-2-1-1 .8c-1-.4-2-1.4-2.4-2.4l.8-1-1-2z"/></svg>
+                {{ i.t('product.share') }}
+              </a>
+            </div>
+
             <p class="desc">{{ i.pick(p, 'description') }}</p>
             <p class="muted small">@if (p.brand) { {{ i.t('product.brand') }}: <strong>{{ p.brand }}</strong> · }{{ i.t('product.code') }}: {{ p.sku }}</p>
 
@@ -116,7 +126,7 @@ import { FavoritesService } from '../core/favorites.service';
     .back { display: inline-block; margin-bottom: 1.2rem; font-weight: 600; }
     .top { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
     .art { border-radius: 18px; overflow: hidden; height: 460px; background: var(--soft); padding: 2rem; border: 1px solid var(--line); }
-    
+
     h1 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); margin: .6rem 0 .4rem; }
     .chip { text-decoration: none; }
     .desc { margin-top: 1rem; font-size: 1.08rem; }
@@ -157,15 +167,17 @@ import { FavoritesService } from '../core/favorites.service';
       .art { height: 280px; }
     }
 
-    /* favorite button: on its own line under the rating, above the description */
-    .like-btn {
-      display: flex; width: fit-content; align-items: center; gap: .5rem; margin: .8rem 0 0; cursor: pointer;
+    .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
+    .like-btn, .share-btn {
+      display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; text-decoration: none;
       border: 1.5px solid var(--line); background: #fff; color: var(--text);
       font: 600 .9rem var(--font-body); padding: .5em 1em; border-radius: 999px;
     }
     .like-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--red); stroke-width: 2; stroke-linejoin: round; }
     .like-btn.on { border-color: var(--red); }
     .like-btn.on svg { fill: var(--red); }
+    .share-btn svg { width: 20px; height: 20px; fill: none; stroke: #25D366; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .share-btn:hover { border-color: #25D366; }
   `],
 })
 export class ProductComponent {
@@ -174,6 +186,7 @@ export class ProductComponent {
   readonly cart = inject(CartService);
   private api = inject(ApiService);
   private router = inject(Router);
+  private doc = inject(DOCUMENT);
 
   readonly id = input.required<string>();   // from /product/:id
 
@@ -234,5 +247,12 @@ export class ProductComponent {
       return;
     }
     this.fav.toggle(productId).subscribe({ error: () => {} });
+  }
+
+  /** Link that opens WhatsApp: "<name> — $<price>" and the address of this product page. */
+  waLink(p: ProductDetail): string {
+    const url = `${this.doc.location.origin}/product/${p.id}`;
+    const text = `${this.i.pick(p)} — $${p.price}\n${url}`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 }

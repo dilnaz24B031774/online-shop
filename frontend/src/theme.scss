@@ -1,0 +1,105 @@
+/* =====================================================================
+   Theme switch (sun / moon) + dark theme.
+   Add ONE line to the end of src/styles.scss:   @import './theme.scss';
+   ===================================================================== */
+
+/* ---------- sun / moon buttons in the top bar ---------- */
+.tools { display: flex; align-items: center; gap: .7rem; }
+.themes {
+  display: flex; gap: 2px; padding-left: .7rem; border-left: 1px solid rgba(255, 255, 255, .22);
+}
+.themes button {
+  border: 0; background: transparent; color: #d5e6de; width: 30px; height: 26px; padding: 0;
+  border-radius: 6px; cursor: pointer; display: grid; place-items: center;
+}
+.themes button svg {
+  width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.themes button:not(.on):hover { background: rgba(255, 255, 255, .14); }
+.themes button.on { background: var(--amber); color: #0E3B2E; }
+
+/* ---------- dark theme ---------- */
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0f1613;          /* page */
+  --surface: #17211c;     /* header, cards, panels */
+  --soft: #1f2c26;
+  --line: #2c3b34;
+  --text: #e6efe9;
+  --ink: #e6efe9;
+  --muted: #9db3a8;
+  --ink-soft: #9db3a8;
+
+  --green-900: #0b2a20;   /* dark bars: top bar, footer, "best sellers" */
+  --green-700: #2b9672;   /* buttons, links */
+  --green-50: #1d3a2e;    /* light green tints */
+  --sky: #24322c;
+  --red: #ef6a5e;
+  --berry: #ef7c93;
+  --teal: #3fb6c4;
+  --teal-dark: #6fd0db;
+}
+
+html[data-theme='dark'] body { background: var(--bg); color: var(--text); }
+html[data-theme='dark'] h1,
+html[data-theme='dark'] h2,
+html[data-theme='dark'] h3 { color: var(--text); }
+html[data-theme='dark'] a { color: inherit; }
+
+/* surfaces that are hard-coded white in component styles */
+html[data-theme='dark'] .head,
+html[data-theme='dark'] .catnav,
+html[data-theme='dark'] .search,
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .panel,
+html[data-theme='dark'] .panel-chat,
+html[data-theme='dark'] .msg,
+html[data-theme='dark'] .add,
+html[data-theme='dark'] .like,
+html[data-theme='dark'] .like-btn,
+html[data-theme='dark'] .share-btn,
+html[data-theme='dark'] .link-btn,
+html[data-theme='dark'] .chips button { background: var(--surface); }
+
+html[data-theme='dark'] .msg.me { background: var(--green-700); }
+html[data-theme='dark'] .add.done { background: var(--green-50); }
+html[data-theme='dark'] .add:hover { background: var(--green-700); }
+html[data-theme='dark'] .cart-icon .count { border-color: var(--surface); }
+
+/* text that used the dark green colour on a light background */
+html[data-theme='dark'] .logo:not(.light),
+html[data-theme='dark'] .price,
+html[data-theme='dark'] .item strong,
+html[data-theme='dark'] .total strong,
+html[data-theme='dark'] .sum { color: var(--text); }
+html[data-theme='dark'] .account-link svg,
+html[data-theme='dark'] .cart-icon svg { stroke: #7fd6b3; }
+html[data-theme='dark'] .catnav .strong { color: #7fd6b3; }
+
+/* form fields */
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  background: var(--soft); color: var(--text); border-color: var(--line);
+}
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder { color: var(--muted); }
+html[data-theme='dark'] .search input { background: var(--surface); }
+
+/* product photos usually have a white background: keep the frame light */
+html[data-theme='dark'] .photo,
+html[data-theme='dark'] .art,
+html[data-theme='dark'] .thumb,
+html[data-theme='dark'] .circle { background: #eef3f0; }
+
+/* ghost buttons */
+html[data-theme='dark'] .btn-ghost { background: transparent; color: var(--text); border-color: var(--line); }
+html[data-theme='dark'] .btn-ghost:hover { border-color: var(--green-700); }
+
+/* checkout / orders */
+html[data-theme='dark'] .option.on { background: var(--green-50); }
+html[data-theme='dark'] .stepper { background: var(--soft); }
+html[data-theme='dark'] .stepper button { color: var(--text); }
+html[data-theme='dark'] .demo { background: var(--soft); }
