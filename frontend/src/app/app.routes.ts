@@ -15,5 +15,6 @@ export const routes: Routes = [
   { path: 'pay/:token', loadComponent: () => import('./pages/pay.component').then(m => m.PayComponent) },
   { path: 'top', loadComponent: () => import('./pages/top.component').then(m => m.TopComponent) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
+  { path: 'favorites', canActivate: [authGuard], loadComponent: () => import('./pages/favorites.component').then(m => m.FavoritesComponent) },
   { path: '**', redirectTo: '' },
 ];

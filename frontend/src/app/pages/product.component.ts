@@ -161,8 +161,9 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
       .art { height: 280px; }
     }
 
+    /* favorite button: on its own line under the rating, above the description */
     .like-btn {
-      display: inline-flex; align-items: center; gap: .5rem; margin-top: .8rem; cursor: pointer;
+      display: flex; width: fit-content; align-items: center; gap: .5rem; margin: .8rem 0 0; cursor: pointer;
       border: 1.5px solid var(--line); background: #fff; color: var(--text);
       font: 600 .9rem var(--font-body); padding: .5em 1em; border-radius: 999px;
     }

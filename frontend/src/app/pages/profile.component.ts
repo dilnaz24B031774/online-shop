@@ -4,14 +4,12 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
-import { FavoritesService } from '../core/favorites.service';
 import { I18nService, Lang } from '../core/i18n.service';
 import { Address } from '../core/models';
-import { ProductCardComponent } from '../shared/product-card.component';
 
 @Component({
   selector: 'app-profile',
-  imports: [FormsModule, RouterLink, ProductCardComponent],
+  imports: [FormsModule, RouterLink],
   template: `
     <div class="container page">
       <h1>{{ i.t('profile.title') }}</h1>
@@ -65,20 +63,6 @@ import { ProductCardComponent } from '../shared/product-card.component';
           </section>
         </div>
       </div>
-
-      <section class="favs" id="favorites">
-        <h2>{{ i.t('profile.favorites') }} <small>{{ fav.count() }}</small></h2>
-        @if (fav.items().length) {
-          <div class="grid">
-            @for (p of fav.items(); track p.id) { <app-product-card [product]="p" /> }
-          </div>
-        } @else {
-          <div class="panel empty">
-            <p>{{ i.t('profile.noFavorites') }}</p>
-            <a routerLink="/catalog" class="btn btn-primary">{{ i.t('hero.shop') }}</a>
-          </div>
-        }
-      </section>
     </div>
   `,
   styles: [`
@@ -92,10 +76,6 @@ import { ProductCardComponent } from '../shared/product-card.component';
     .main { display: flex; flex-direction: column; gap: 1.2rem; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
     .addr { margin: 0 0 .7rem; }
-    .favs { margin-top: 2.4rem; }
-    .favs h2 small { font-family: var(--font-body); font-size: .9rem; color: var(--ink-soft); font-weight: 600; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
-    .empty { text-align: center; }
     @media (max-width: 820px) {
       .layout { grid-template-columns: 1fr; }
       .two { grid-template-columns: 1fr; }
@@ -105,7 +85,6 @@ import { ProductCardComponent } from '../shared/product-card.component';
 export class ProfileComponent implements OnInit {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
-  readonly fav = inject(FavoritesService);
   private api = inject(ApiService);
 
   readonly addresses = signal<Address[]>([]);
@@ -125,7 +104,6 @@ export class ProfileComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.fav.load().subscribe({ error: () => {} });
     this.api.addresses().subscribe({ next: a => this.addresses.set(a), error: () => {} });
   }
 
