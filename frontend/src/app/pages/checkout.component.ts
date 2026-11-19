@@ -1,38 +1,75 @@
 import { UpperCasePipe } from '@angular/common';
 import { DemoQrComponent } from '../shared/demo-qr.component';
+import { CountdownComponent } from '../shared/countdown.component';
+import { QrCodeComponent } from '../shared/qr-code.component';
+import { PayLinkService } from '../core/pay-link.service';
 import { PayIconComponent } from '../shared/pay-icon.component';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { CartService } from '../core/cart.service';
 import { I18nService } from '../core/i18n.service';
-import { Address, CardInput, Order, PromoCheck } from '../core/models';
+import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models';
 
 @Component({
   selector: 'app-checkout',
-  imports: [FormsModule, RouterLink, UpperCasePipe, PayIconComponent, DemoQrComponent],
+  imports: [FormsModule, RouterLink, UpperCasePipe, PayIconComponent, DemoQrComponent, CountdownComponent, QrCodeComponent],
   template: `
     <div class="container page">
       @if (placed(); as o) {
+        @if (o.status === 'cancelled' && o.failure_reason === 'Payment time is over.') {
+        <div class="panel done expired">
+          <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#FBECEA"/><circle cx="32" cy="34" r="14" fill="none" stroke="#C2453A" stroke-width="4"/><path d="M32 27v8l5 3M27 16h10" fill="none" stroke="#C2453A" stroke-width="4" stroke-linecap="round"/></svg>
+          <h1>{{ i.t('timer.expiredTitle') }}</h1>
+          <p>{{ i.t('timer.expiredText', { n: o.id }) }}</p>
+          <div class="done-actions">
+            <a routerLink="/catalog" class="btn btn-primary">{{ i.t('timer.again') }}</a>
+            <a routerLink="/orders" class="btn btn-ghost">{{ i.t('checkout.toOrders') }}</a>
+          </div>
+        </div>
+        } @else {
         <div class="panel done">
           <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#E3F4EA"/><path d="M20 33l8 8 16-17" fill="none" stroke="#2F8F5B" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <h1>{{ i.t(o.status === 'paid' ? 'checkout.done' : 'checkout.accepted', { n: o.id }) }}</h1>
           <p>{{ i.t('checkout.doneText') }}</p>
+          @if (o.qr_paid_device) {
+            <p class="phone-paid">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
+              <span>{{ i.t('qr.paidFrom', { device: o.qr_paid_device }) }}</span>
+            </p>
+          }
           <p class="total">\${{ o.total_amount }} · {{ i.t('pay.' + o.payment_method) }}
             @if (o.card_last4) { · {{ o.card_brand | uppercase }} •••• {{ o.card_last4 }} }
             · <span class="pay-badge" [class]="'pay-badge p-' + o.payment_status">{{ i.t('status.' + o.payment_status) }}</span>
           </p>
           @if (o.payment_method === 'qr' && o.payment_status === 'pending') {
             <div class="qr-pay">
-              <app-demo-qr [seed]="o.id" [label]="i.t('qr.title')" />
+              <div class="qr-col">
+                @if (o.qr_token) {
+                  <app-qr-code [value]="links.link(o.qr_token)" [label]="i.t('qr.title')" />
+                  <a class="qr-open" [href]="links.link(o.qr_token)" target="_blank" rel="noopener">{{ i.t('qr.open') }} ↗</a>
+                } @else {
+                  <app-demo-qr [seed]="o.id" [label]="i.t('qr.title')" />
+                }
+              </div>
               <div>
-                <strong>{{ i.t('qr.scan') }}</strong>
-                <p class="muted">{{ i.t('qr.steps') }}</p>
+                @if (o.expires_at) {
+                  <div class="qr-timer">
+                    <app-countdown [expiresAt]="o.expires_at" [totalSeconds]="totalSeconds(o)" (expired)="refreshOrder(o.id)" />
+                    <span>{{ i.t('timer.qrHint') }}</span>
+                  </div>
+                }
+                <strong>{{ i.t('qr.scanPhone') }}</strong>
+                <ol class="qr-steps">
+                  <li>{{ i.t('qr.step1') }}</li>
+                  <li>{{ i.t('qr.step2') }}</li>
+                  <li>{{ i.t('qr.step3') }}</li>
+                </ol>
                 <p class="qr-sum">\${{ o.total_amount }} · {{ i.t('transfer.purposeText', { n: o.id }) }}</p>
-                <button type="button" class="btn btn-primary" (click)="payQr(o.id)" [disabled]="busy()">{{ i.t('qr.paid') }}</button>
-                <small class="muted demo-note">{{ i.t('qr.demo') }}</small>
+                <p class="qr-wait"><span class="pulse" aria-hidden="true"></span>{{ i.t('qr.waitingPhone') }}</p>
+                <small class="muted demo-note">{{ links.localOnly() ? i.t('qr.lanHint') : i.t('qr.wifiHint') }}</small>
               </div>
             </div>
           }
@@ -45,10 +82,14 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
               <div><dt>IBAN</dt><dd>KZ00 0000 0000 0000 0000</dd></div>
               <div><dt>{{ i.t('transfer.amount') }}</dt><dd>\${{ o.total_amount }}</dd></div>
               <div><dt>{{ i.t('transfer.purpose') }}</dt><dd>{{ i.t('transfer.purposeText', { n: o.id }) }}</dd></div>
+              @if (o.expires_at && o.payment_status === 'pending') {
+                <div><dt>{{ i.t('timer.payUntil') }}</dt><dd>{{ until(o.expires_at) }}</dd></div>
+              }
             </dl>
           }
           <a routerLink="/orders" class="btn btn-primary">{{ i.t('checkout.toOrders') }}</a>
         </div>
+        }
       } @else {
         <h1>{{ i.t('checkout.title') }}</h1>
         <div class="layout">
@@ -88,7 +129,44 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
                 }
               </div>
 
-              @if (method === 'card') {
+              @if (method === 'card' && savedCards().length) {
+                <div class="saved" role="radiogroup" [attr.aria-label]="i.t('saved.title')">
+                  <div class="saved-head">
+                    <strong>{{ i.t('saved.title') }}</strong>
+                    <small>{{ i.t('saved.why', { n: recentDays() }) }}</small>
+                  </div>
+                  @for (c of savedCards(); track c.id) {
+                    <div class="saved-row" [class.on]="cardMode() === c.id">
+                      <label class="saved-pick">
+                        <input type="radio" name="cardmode" [checked]="cardMode() === c.id" (change)="pickCard(c.id)" />
+                        <span class="mini-card" [attr.data-brand]="c.brand">{{ brandName(c.brand) }}</span>
+                        <span class="saved-info">
+                          <b>•••• {{ c.last4 }}</b>
+                          <small>{{ i.t('saved.expires') }} {{ pad(c.exp_month) }}/{{ c.exp_year % 100 }} · {{ i.t('saved.used') }} {{ ago(c.last_used_at) }}</small>
+                        </span>
+                      </label>
+                      @if (cardMode() === c.id) {
+                        <div class="saved-cvc" [class.bad]="cardError() === 'cvc'">
+                          <label [for]="'scvc' + c.id">CVC</label>
+                          <input [id]="'scvc' + c.id" name="scvc" type="password" inputmode="numeric" maxlength="4" placeholder="•••"
+                                 autocomplete="cc-csc" [(ngModel)]="savedCvc" />
+                        </div>
+                      }
+                      <button type="button" class="saved-del" (click)="removeCard(c)" [attr.aria-label]="i.t('saved.delete')">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>
+                      </button>
+                    </div>
+                  }
+                  <label class="saved-row new" [class.on]="cardMode() === 'new'">
+                    <span class="saved-pick">
+                      <input type="radio" name="cardmode" [checked]="cardMode() === 'new'" (change)="pickCard('new')" />
+                      <span class="mini-card plus" aria-hidden="true">+</span>
+                      <span class="saved-info"><b>{{ i.t('saved.new') }}</b></span>
+                    </span>
+                  </label>
+                </div>
+              }
+              @if (method === 'card' && cardMode() === 'new') {
                 <div class="card-box">
                   <div class="card-visual" [attr.data-brand]="brand()">
                     <div class="chip" aria-hidden="true"></div>
@@ -125,12 +203,23 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
                     <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
                     {{ i.t('card.safe') }}
                   </p>
+                  <label class="save-card">
+                    <input type="checkbox" name="savecard" [(ngModel)]="saveCard" />
+                    <span>
+                      <b>{{ i.t('saved.save') }}</b>
+                      <small>{{ i.t('saved.saveHint') }}</small>
+                    </span>
+                  </label>
                   <p class="demo">{{ i.t('card.demo') }} <code>4242 4242 4242 4242</code> · {{ i.t('card.demoDecline') }} <code>4000 0000 0000 0002</code></p>
                 </div>
               } @else if (method === 'qr') {
                 <div class="info-box">
                   <strong>{{ i.t('qr.title') }}</strong>
                   <p>{{ i.t('qr.text') }}</p>
+                  <p class="timer-line">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg>
+                    {{ i.t('timer.qrInfo') }}
+                  </p>
                 </div>
               } @else if (method === 'installment') {
                 <div class="info-box">
@@ -150,7 +239,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
                   <strong>{{ i.t('transfer.title') }}</strong>
                   <p>{{ i.t('transfer.text') }}</p>
                 </div>
-              } @else {
+              } @else if (method === 'cash_on_delivery') {
                 <div class="info-box"><p>{{ i.t('cash.text') }}</p></div>
               }
             </section>
@@ -232,6 +321,53 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
     .promo-err { color: var(--red); display: block; margin-top: .35rem; }
     .link { border: 0; background: none; color: var(--green-700); font-weight: 600; cursor: pointer; padding: 0; }
     .discount { color: var(--green-700); font-weight: 600; }
+    /* saved cards */
+    .saved { margin-top: 1.2rem; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .saved-head { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; flex-wrap: wrap;
+                  padding: .8rem 1rem; background: var(--soft); }
+    .saved-head small { color: var(--muted); font-size: .8rem; }
+    .saved-row { display: flex; align-items: center; gap: .8rem; padding: .75rem 1rem; border-top: 1px solid var(--line);
+                 cursor: pointer; transition: background .15s; margin: 0; font-weight: 400; }
+    .saved-row:hover { background: #fafcfb; }
+    .saved-row.on { background: #f1f8f4; box-shadow: inset 3px 0 var(--green-700); }
+    .saved-pick { display: flex; align-items: center; gap: .8rem; flex: 1; min-width: 0; cursor: pointer; margin: 0; font-weight: 400; }
+    .saved-pick input { width: auto; margin: 0; accent-color: var(--green-700); }
+    .mini-card { width: 52px; height: 34px; border-radius: 6px; display: grid; place-items: center; flex: none;
+                 font: 800 .7rem var(--font-body); letter-spacing: .04em; color: #fff; background: linear-gradient(135deg, #155a45, #0e3b2e); }
+    .mini-card[data-brand="visa"] { background: linear-gradient(135deg, #1a3a8f, #0f2363); }
+    .mini-card[data-brand="mastercard"] { background: linear-gradient(135deg, #3b2a22, #17110e); }
+    .mini-card[data-brand="mir"] { background: linear-gradient(135deg, #1f8a4c, #0d5c34); }
+    .mini-card.plus { background: #fff; color: var(--green-700); border: 1.5px dashed #b9cfc5; font-size: 1.2rem; }
+    .saved-info { display: flex; flex-direction: column; min-width: 0; }
+    .saved-info b { font-variant-numeric: tabular-nums; letter-spacing: .03em; }
+    .saved-info small { color: var(--muted); font-size: .8rem; }
+    .saved-cvc { display: flex; align-items: center; gap: .5rem; }
+    .saved-cvc label { margin: 0; font-size: .82rem; color: var(--muted); }
+    .saved-cvc input { width: 74px; padding: .5em .6em; text-align: center; letter-spacing: .2em; }
+    .saved-cvc.bad input { border-color: var(--red); box-shadow: 0 0 0 3px rgba(200, 60, 50, .12); }
+    .saved-del { border: 0; background: none; cursor: pointer; padding: .35rem; border-radius: 8px; color: var(--muted); display: grid; }
+    .saved-del:hover { background: #fbecea; color: var(--red); }
+    .saved-del svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .save-card { grid-column: 1 / -1; display: flex; gap: .7rem; align-items: flex-start; margin: 0; padding: .8rem 1rem;
+                 border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-weight: 400; }
+    .save-card input { width: 18px; height: 18px; margin: .15rem 0 0; accent-color: var(--green-700); flex: none; }
+    .save-card span { display: flex; flex-direction: column; }
+    .save-card small { color: var(--muted); font-size: .8rem; }
+    .timer-line { display: flex; align-items: center; gap: .45rem; color: var(--green-900); font-weight: 600; }
+    .timer-line svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; flex: none; }
+    .qr-col { display: flex; flex-direction: column; align-items: center; gap: .55rem; flex: none; }
+    .qr-open { font-size: .82rem; font-weight: 600; color: var(--green-700); }
+    .qr-steps { margin: .4rem 0 .6rem; padding-left: 1.2rem; color: var(--muted); font-size: .88rem; line-height: 1.5; }
+    .qr-wait { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--green-900); font-size: .9rem; }
+    .pulse { width: 10px; height: 10px; border-radius: 50%; background: #2f8f5b; box-shadow: 0 0 0 0 rgba(47,143,91,.6); animation: pulse 1.6s infinite; flex: none; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 10px rgba(47,143,91,0); } 100% { box-shadow: 0 0 0 0 rgba(47,143,91,0); } }
+    .phone-paid { display: inline-flex; align-items: center; gap: .5rem; background: #e7f5ec; color: #1f6b43; font-weight: 600;
+                  border-radius: 999px; padding: .45em 1em; animation: pop .4s ease-out; }
+    .phone-paid svg { width: 18px; height: 18px; flex: none; margin: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+    .qr-timer { display: flex; align-items: center; gap: .9rem; padding: .2rem 0 .8rem; margin-bottom: .6rem; border-bottom: 1px solid var(--line); }
+    .qr-timer span { color: var(--muted); font-size: .82rem; line-height: 1.35; }
+    .done-actions { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; }
     .card-box { margin-top: 1.2rem; display: grid; grid-template-columns: 280px 1fr; gap: 1.4rem; align-items: start; }
     .card-visual {
       aspect-ratio: 1.586; border-radius: 16px; padding: 1.1rem 1.2rem; color: #fff; position: relative;
@@ -270,7 +406,7 @@ import { Address, CardInput, Order, PromoCheck } from '../core/models';
     @media (max-width: 820px) { .card-box { grid-template-columns: 1fr; } .card-visual { max-width: 320px; } .layout { grid-template-columns: 1fr; } .addr { grid-template-columns: 1fr; } .addr .wide { grid-column: auto; } }
   `],
 })
-export class CheckoutComponent implements OnInit {
+export class CheckoutComponent implements OnInit, OnDestroy {
   readonly i = inject(I18nService);
   readonly cart = inject(CartService);
   private api = inject(ApiService);
@@ -289,6 +425,15 @@ export class CheckoutComponent implements OnInit {
   readonly cardError = signal<string | null>(null);
   card = { number: '', holder: '', expiry: '', cvc: '' };
 
+  // saved cards: offered only if the customer paid by card recently (the server decides)
+  readonly links = inject(PayLinkService);
+  private qrPoll?: ReturnType<typeof setInterval>;
+  readonly savedCards = signal<SavedCard[]>([]);
+  readonly recentDays = signal(90);
+  readonly cardMode = signal<'new' | number>('new');
+  savedCvc = '';
+  saveCard = false;
+
   addressId: number | null = null;
   method = 'card';
   newAddress = { label: 'Home', city: '', street: '', apartment: '' };
@@ -296,6 +441,73 @@ export class CheckoutComponent implements OnInit {
   ngOnInit() {
     this.cart.load().subscribe({ error: () => {} });
     this.loadAddresses();
+    this.loadCards();
+    this.links.ensure();
+    // waiting for the phone: check the order every 2 seconds while a QR is on the screen
+    this.qrPoll = setInterval(() => {
+      const o = this.placed();
+      if (o && o.payment_method === 'qr' && o.payment_status === 'pending') this.refreshOrder(o.id, 0);
+    }, 2000);
+  }
+
+  ngOnDestroy() {
+    clearInterval(this.qrPoll);
+  }
+
+  loadCards() {
+    this.api.savedCards().subscribe({
+      next: r => {
+        this.savedCards.set(r.cards);
+        this.recentDays.set(r.recent_days);
+        const mode = this.cardMode();
+        if (mode === 'new' && r.cards.length && !this.card.number) this.cardMode.set(r.cards[0].id);
+        if (typeof mode === 'number' && !r.cards.some(c => c.id === mode)) this.cardMode.set(r.cards[0]?.id ?? 'new');
+      },
+      error: () => {},
+    });
+  }
+
+  pickCard(mode: 'new' | number) {
+    this.cardMode.set(mode);
+    this.savedCvc = '';
+    this.cardError.set(null);
+    this.error.set('');
+  }
+
+  removeCard(c: SavedCard) {
+    this.api.deleteCard(c.id).subscribe({ next: () => this.loadCards(), error: () => {} });
+  }
+
+  brandName(brand: string): string {
+    return { visa: 'VISA', mastercard: 'MC', mir: 'МИР', amex: 'AMEX' }[brand] ?? 'CARD';
+  }
+
+  pad(n: number): string {
+    return String(n).padStart(2, '0');
+  }
+
+  ago(date: string): string {
+    const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+    return days <= 0 ? this.i.t('tp.today') : this.i.t('tp.daysAgo', { n: days });
+  }
+
+  // ---------- payment timer
+  totalSeconds(o: Order): number {
+    if (!o.expires_at) return 900;
+    return Math.max(60, Math.round((new Date(o.expires_at).getTime() - new Date(o.created_at).getTime()) / 1000));
+  }
+
+  until(date: string): string {
+    return new Date(date).toLocaleString(this.i.lang() === 'en' ? 'en-GB' : 'ru-RU',
+      { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** the timer reached 0: ask the server (it cancels the order and returns the goods to the stock) */
+  refreshOrder(id: number, delay = 800) {
+    setTimeout(() => this.api.orders().subscribe({
+      next: list => { const o = list.find(x => x.id === id); if (o) this.placed.set(o); },
+      error: () => {},
+    }), 800);
   }
 
   loadAddresses(selectId?: number) {
@@ -318,8 +530,18 @@ export class CheckoutComponent implements OnInit {
     this.promoError.set('');
     this.api.checkPromo(code).subscribe({
       next: r => this.promo.set(r),
-      error: e => this.promoError.set(e.error?.detail ?? this.i.t('common.error')),
+      error: e => this.promoError.set(this.promoText(e.error)),
     });
+  }
+
+  /** server reason code -> text in the current language */
+  promoText(err: { code?: string; detail?: string } | null): string {
+    const code = err?.code;
+    if (code && ['not_found', 'not_active', 'expired', 'used_up', 'min_order', 'already_used'].includes(code)) {
+      const min = /\$([\d.]+)/.exec(err?.detail ?? '')?.[1] ?? '';
+      return this.i.t('promo.err.' + code, { min });
+    }
+    return err?.detail ?? this.i.t('common.error');
   }
 
   removePromo() {
@@ -372,14 +594,23 @@ export class CheckoutComponent implements OnInit {
     this.busy.set(true);
     this.api.payQr(id).subscribe({
       next: order => { this.placed.set(order); this.busy.set(false); },
-      error: e => { this.busy.set(false); this.error.set(e.error?.detail ?? this.i.t('common.error')); },
+      error: e => {
+        this.busy.set(false);
+        if (e.error?.order) { this.placed.set(e.error.order); return; }       // time is over -> show it
+        this.error.set(e.error?.detail ?? this.i.t('common.error'));
+      },
     });
   }
 
   place() {
     if (!this.addressId) { this.error.set(this.i.t('checkout.needAddress')); return; }
     let card: CardInput | undefined;
-    if (this.method === 'card') {
+    let saved: { id: number; cvc: string } | undefined;
+    const mode = this.cardMode();
+    if (this.method === 'card' && typeof mode === 'number') {
+      if (!/^\d{3,4}$/.test(this.savedCvc)) { this.cardError.set('cvc'); this.error.set(this.i.t('card.err.cvc')); return; }
+      saved = { id: mode, cvc: this.savedCvc };
+    } else if (this.method === 'card') {
       const problem = this.checkCard();
       if (problem) { this.cardError.set(problem); this.error.set(this.i.t('card.err.' + problem)); return; }
       const [mm, yy] = this.card.expiry.split('/');
@@ -389,15 +620,20 @@ export class CheckoutComponent implements OnInit {
     this.error.set('');
     this.cardError.set(null);
     const months = this.method === 'installment' ? this.installmentMonths : undefined;
-    this.api.checkout(this.addressId, this.method, this.promo()?.code ?? '', card, months).subscribe({
+    this.api.checkout(this.addressId, this.method, this.promo()?.code ?? '', card, months, saved,
+                      this.method === 'card' && !saved && this.saveCard).subscribe({
       next: order => {
         this.placed.set(order); this.busy.set(false); this.cart.load().subscribe();
         this.card = { number: '', holder: '', expiry: '', cvc: '' };          // forget the card data
+        this.savedCvc = '';
       },
       error: e => {
         this.busy.set(false);
         this.card.cvc = '';
+        this.savedCvc = '';
         if (e.status === 402) { this.error.set(this.i.t('card.declined')); return; }
+        if (e.error?.code) { this.removePromo(); this.promoError.set(this.promoText(e.error)); this.error.set(this.promoText(e.error)); return; }
+        if (e.error?.field === 'saved_card') { this.loadCards(); this.cardMode.set('new'); }
         if (e.error?.field) { this.cardError.set(e.error.field); this.error.set(this.i.t('card.err.' + e.error.field)); return; }
         this.error.set(e.error?.detail ?? this.i.t('common.error'));
       },

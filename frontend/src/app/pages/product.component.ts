@@ -10,10 +10,12 @@ import { I18nService } from '../core/i18n.service';
 import { ProductDetail } from '../core/models';
 import { ProductImageComponent } from '../shared/product-image.component';
 import { StarsComponent } from '../shared/stars.component';
+import { FavoritesService } from '../core/favorites.service';
+import { NotifyButtonComponent } from '../shared/notify-button.component';
 
 @Component({
   selector: 'app-product',
-  imports: [RouterLink, FormsModule, DatePipe, ProductImageComponent, StarsComponent],
+  imports: [RouterLink, FormsModule, DatePipe, ProductImageComponent, StarsComponent, NotifyButtonComponent],
   template: `
     <div class="container page">
       <a routerLink="/catalog" class="back">← {{ i.t('product.back') }}</a>
@@ -28,6 +30,10 @@ import { StarsComponent } from '../shared/stars.component';
             <a class="chip" [routerLink]="['/catalog']" [queryParams]="{ category: p.category.id }">{{ i.pick(p.category) }}</a>
             <h1>{{ i.pick(p) }}</h1>
             <app-stars [value]="p.avg_rating" [count]="p.review_count" />
+            <button type="button" class="like-btn" [class.on]="fav.isLiked(p.id)" (click)="toggleLike(p.id)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
+              {{ fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like') }}
+            </button>
             <p class="desc">{{ i.pick(p, 'description') }}</p>
             <p class="muted small">@if (p.brand) { {{ i.t('product.brand') }}: <strong>{{ p.brand }}</strong> · }{{ i.t('product.code') }}: {{ p.sku }}</p>
 
@@ -57,6 +63,9 @@ import { StarsComponent } from '../shared/stars.component';
                 @if (cart.quantityOf(p.id) > 0) {
                   <p class="in-cart">{{ i.t('product.added') }}: {{ cart.quantityOf(p.id) }} · <a routerLink="/cart">{{ i.t('nav.cart') }}</a></p>
                 }
+              }
+              @if (p.stock_quantity === 0) {
+                <app-notify-button [productId]="p.id" size="big" />
               }
               @if (cartError()) { <div class="alert alert-error">{{ cartError() }}</div> }
             </div>
@@ -151,6 +160,16 @@ import { StarsComponent } from '../shared/stars.component';
       .top, .rev-grid { grid-template-columns: 1fr; }
       .art { height: 280px; }
     }
+
+    /* favorite button: on its own line under the rating, above the description */
+    .like-btn {
+      display: flex; width: fit-content; align-items: center; gap: .5rem; margin: .8rem 0 0; cursor: pointer;
+      border: 1.5px solid var(--line); background: #fff; color: var(--text);
+      font: 600 .9rem var(--font-body); padding: .5em 1em; border-radius: 999px;
+    }
+    .like-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--red); stroke-width: 2; stroke-linejoin: round; }
+    .like-btn.on { border-color: var(--red); }
+    .like-btn.on svg { fill: var(--red); }
   `],
 })
 export class ProductComponent {
@@ -172,6 +191,7 @@ export class ProductComponent {
   comment = '';
   readonly reviewMsg = signal('');
   readonly reviewOk = signal(false);
+  readonly fav = inject(FavoritesService);
 
   constructor() {
     effect(() => this.load(Number(this.id())));
@@ -210,5 +230,13 @@ export class ProductComponent {
         this.reviewMsg.set(e.error?.detail ?? e.error?.rating?.[0] ?? this.i.t('common.error'));
       },
     });
+  }
+
+  toggleLike(productId: number) {
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+    this.fav.toggle(productId).subscribe({ error: () => {} });
   }
 }

@@ -8,7 +8,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Payment, Product, PromoCode, Review, User,
+    Address, CartItem, Category, Favorite, Notification, Order, OrderItem, Payment, Product, PromoCode,
+    PromoRedemption, Refund, Review, SavedCard, StockSubscription, User,
 )
 from .roles import MANAGER_GROUP, ROLE_CHOICES, sync_role_access
 
@@ -205,8 +206,8 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "status", "total_amount", "created_at", "process_order")
-    list_filter = ("status", "created_at")
+    list_display = ("id", "user", "status", "total_amount", "is_demo", "created_at", "process_order")
+    list_filter = ("status", "is_demo", "created_at")
     search_fields = ("=id", "user__username", "user__email", "shipping_address")
     list_select_related = ("user",)
     date_hierarchy = "created_at"
@@ -243,11 +244,12 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("order", "method", "amount", "status", "paid_at")
+    list_display = ("order", "method", "amount", "status", "refunded_amount", "expires_at", "paid_at")
     list_filter = ("status", "method", "paid_at")
     search_fields = ("=order__id", "order__user__username", "provider_reference")
     list_select_related = ("order",)
-    readonly_fields = ("order", "method", "amount", "status", "provider_reference", "paid_at")
+    readonly_fields = ("order", "method", "amount", "status", "provider_reference", "paid_at", "card_brand",
+                       "card_last4", "saved_card", "expires_at", "refunded_amount", "failure_reason")
     actions = None
 
     def has_add_permission(self, request):
@@ -306,3 +308,49 @@ class PromoCodeAdmin(admin.ModelAdmin):
     list_editable = ("is_active",)
     search_fields = ("code",)
     readonly_fields = ("used_count", "created_at")
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ("user", "product", "created_at")
+    search_fields = ("user__username", "product__name_en", "product__name_ru", "product__sku")
+    list_select_related = ("user", "product")
+    readonly_fields = ("created_at",)
+    raw_id_fields = ("user", "product")
+
+
+class ReadOnlyAdmin(admin.ModelAdmin):
+    """History tables: rows are written only by the shop logic, nobody edits them by hand."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Refund)
+class RefundAdmin(ReadOnlyAdmin):
+    list_display = ("created_at", "order", "order_item", "quantity", "amount", "reason", "created_by")
+    list_filter = ("reason", "created_at")
+    search_fields = ("=order__id", "order__user__username")
+
+
+@admin.register(SavedCard)
+class SavedCardAdmin(ReadOnlyAdmin):
+    list_display = ("user", "brand", "last4", "exp_month", "exp_year", "last_used_at")
+    search_fields = ("user__username", "last4")
+    exclude = ("token",)          # the token is secret even for the staff
+
+
+@admin.register(StockSubscription)
+class StockSubscriptionAdmin(ReadOnlyAdmin):
+    list_display = ("product", "user", "created_at", "notified_at")
+    list_filter = ("notified_at",)
+    search_fields = ("product__name_en", "product__name_ru", "user__username")
+
+
+@admin.register(PromoRedemption)
+class PromoRedemptionAdmin(ReadOnlyAdmin):
+    list_display = ("promo", "user", "order", "created_at")
+    search_fields = ("promo__code", "user__username")

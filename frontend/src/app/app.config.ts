@@ -9,7 +9,7 @@ import { AuthService } from './core/auth.service';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top' })),
+    provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' })),
     provideHttpClient(withInterceptors([authInterceptor])),
     provideAppInitializer(() => inject(AuthService).restore()),
   ],

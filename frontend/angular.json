@@ -56,14 +56,18 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "dijkstrajs"
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
+                  "maximumWarning": "700kB",
                   "maximumError": "1MB"
                 },
                 {
@@ -127,6 +131,6 @@
     }
   },
   "cli": {
-    "analytics": "2384a174-018b-4094-9218-9bdf92eb0068"
+    "analytics": false
   }
 }

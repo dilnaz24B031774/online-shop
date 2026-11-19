@@ -13,31 +13,33 @@
   .threshold { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
   .threshold input { width:72px !important; padding:6px 8px !important; }
   .head-links { display:flex; gap:14px; align-items:center; }
+  .demo-toggle { display:inline-block; margin-top:10px; font-size:12px; font-weight:600; }
 </style>
 
 <div class="page-heading">
   <div>
     <p class="eyebrow">Отчёт менеджера</p>
     <h1>Продажи и склад</h1>
-    <p class="intro">Отменённые заказы не учитываются. Выручка по категориям и товарам показана до скидки по промокоду.</p>
+    <p class="intro">Считаются только оплаченные заказы, возвраты уже вычтены. {% if demo %}Демо-заказы включены.{% else %}Демо-заказы из seed_shop не учитываются — только реальные покупки.{% endif %}</p>
+    <a class="demo-toggle" href="?period={{ period }}&threshold={{ threshold }}{% if not demo %}&demo=1{% endif %}">{% if demo %}Скрыть демо-заказы{% else %}Показать вместе с демо-заказами{% endif %}</a>
   </div>
   <nav class="period" aria-label="Период">
     {% for value, label in periods %}
-      <a href="?period={{ value }}&threshold={{ threshold }}" {% if value == period %}class="on" aria-current="true"{% endif %}>{{ label }}</a>
+      <a href="?period={{ value }}&threshold={{ threshold }}{{ demo_q }}" {% if value == period %}class="on" aria-current="true"{% endif %}>{{ label }}</a>
     {% endfor %}
   </nav>
 </div>
 
 <div class="stats">
-  <div class="stat primary"><span class="stat-label">Выручка</span><strong class="stat-value number">${{ summary.revenue|floatformat:2 }}</strong><span class="stat-note">Скидки по промокодам: ${{ summary.discounts|floatformat:2 }}</span></div>
-  <div class="stat"><span class="stat-label">Заказы</span><strong class="stat-value number">{{ summary.orders }}</strong><span class="stat-note">Отменено: {{ summary.cancelled }}</span></div>
+  <div class="stat primary"><span class="stat-label">Выручка</span><strong class="stat-value number">${{ summary.revenue|floatformat:2 }}</strong><span class="stat-note">Скидки ${{ summary.discounts|floatformat:2 }} · возвраты ${{ summary.refunded|floatformat:2 }}</span></div>
+  <div class="stat"><span class="stat-label">Заказы</span><strong class="stat-value number">{{ summary.orders }}</strong><span class="stat-note">Ждут оплаты: {{ summary.waiting }} · отменено: {{ summary.cancelled }} (не оплачено вовремя: {{ summary.expired }})</span></div>
   <div class="stat"><span class="stat-label">Средний чек</span><strong class="stat-value number">${{ summary.avg_order|floatformat:2 }}</strong><span class="stat-note">Выручка ÷ число заказов</span></div>
   <div class="stat"><span class="stat-label">Продано товаров</span><strong class="stat-value number">{{ summary.units }}</strong><span class="stat-note">Штук за период</span></div>
 </div>
 
 <div class="grid-two">
   <section class="panel">
-    <div class="panel-head"><h2>Продажи по категориям</h2><a href="{% url 'staff_reports_csv' 'categories' %}?period={{ period }}">Скачать CSV</a></div>
+    <div class="panel-head"><h2>Продажи по категориям</h2><a href="{% url 'staff_reports_csv' 'categories' %}?period={{ period }}{{ demo_q }}">Скачать CSV</a></div>
     <div class="table-wrap"><table>
       <thead><tr><th>Категория</th><th>Продано</th><th>Выручка</th><th>Доля</th></tr></thead>
       <tbody>
@@ -60,7 +62,7 @@
       <h2>Мало на складе</h2>
       <div class="head-links">
         <form class="threshold" method="get">
-          <input type="hidden" name="period" value="{{ period }}">
+          <input type="hidden" name="period" value="{{ period }}">{% if demo %}<input type="hidden" name="demo" value="1">{% endif %}
           <label for="th">меньше</label>
           <input id="th" type="number" name="threshold" min="1" max="1000" value="{{ threshold }}" onchange="this.form.submit()">
           <span>шт.</span>
@@ -86,7 +88,7 @@
 
 <div class="grid-two">
   <section class="panel">
-    <div class="panel-head"><h2>Хиты продаж</h2><a href="{% url 'staff_reports_csv' 'best-sellers' %}?period={{ period }}">Скачать CSV</a></div>
+    <div class="panel-head"><h2>Хиты продаж</h2><a href="{% url 'staff_reports_csv' 'best-sellers' %}?period={{ period }}{{ demo_q }}">Скачать CSV</a></div>
     <div class="table-wrap"><table>
       <thead><tr><th>#</th><th>Товар</th><th>Продано</th><th>Выручка</th><th>Остаток</th></tr></thead>
       <tbody>
@@ -123,4 +125,20 @@
     </table></div>
   </section>
 </div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Возвраты</h2><span class="muted" style="font-size:12px">{{ summary.refund_count }} шт. на ${{ summary.refunded|floatformat:2 }}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Дата</th><th>Заказ</th><th>Товар</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+    <tbody>
+    {% for r in refunds %}
+      <tr><td>{{ r.created_at|date:'d.m.Y H:i' }}</td><td><a href="{% url 'staff_order_detail' r.order_id %}">№{{ r.order_id }}</a></td>
+          <td class="cell-main">{{ r.order_item.product.name_ru|default:r.order_item.product.name_en }}</td>
+          <td>{{ r.quantity }}</td><td class="number">${{ r.amount|floatformat:2 }}</td></tr>
+    {% empty %}
+      <tr><td colspan="5" class="empty"><strong>Возвратов не было</strong>За выбранный период.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
 {% endblock %}

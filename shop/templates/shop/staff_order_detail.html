@@ -1,6 +1,102 @@
 {% extends 'shop/staff_base.html' %}{% block title %}Заказ #{{ order.pk }}{% endblock %}{% block content %}
-<div class="page-heading"><div><p class="eyebrow">Обработка заказа</p><h1>Заказ #{{ order.pk }}</h1><p class="intro">{{ order.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_status.html' with status=order.status %}</p></div><a class="button secondary" href="{% url 'staff_orders' %}">← Все заказы</a></div>{% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
-<div class="grid-two"><section class="panel"><div class="panel-head"><h2>Состав заказа</h2></div><div class="table-wrap"><table><thead><tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr></thead><tbody>{% for item in items %}<tr><td class="cell-main">{{ item.product.name_ru|default:item.product.name_en }}<small>{{ item.product.sku }}</small></td><td class="number">${{ item.unit_price|floatformat:2 }}</td><td>{{ item.quantity }}</td><td class="number">${{ item.line_total|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="empty">В заказе нет товаров.</td></tr>{% endfor %}</tbody></table></div><div class="order-total"><span>Итого</span><span class="number">${{ order.total_amount|floatformat:2 }}</span></div></section>
-<div><section class="panel"><div class="panel-head"><h2>Покупатель и доставка</h2></div><div class="panel-body"><dl class="detail-list"><div><dt>Покупатель</dt><dd>{{ order.user.get_full_name|default:order.user.username }}</dd></div><div><dt>Электронная почта</dt><dd>{{ order.user.email|default:'Не указана' }}</dd></div><div><dt>Телефон</dt><dd>{{ order.user.phone|default:'Не указан' }}</dd></div><div><dt>Адрес доставки</dt><dd>{{ order.shipping_address }}</dd></div>{% if perms.shop.view_payment %}<div><dt>Оплата</dt><dd>{% if payment %}{% include 'shop/staff_status.html' with status=payment.status %} · ${{ payment.amount|floatformat:2 }}<small class="muted" style="display:block;margin-top:4px">{% if payment.method == 'card' %}Карта{% if payment.card_last4 %} {{ payment.card_brand|upper }} •••• {{ payment.card_last4 }}{% endif %}{% elif payment.method == 'bank_transfer' %}Банковский перевод{% elif payment.method == 'qr' %}QR в приложении банка{% elif payment.method == 'installment' %}Рассрочка 0-0-{{ payment.installment_months }}{% else %}Наличными курьеру{% endif %} · {{ payment.provider_reference }}{% if payment.failure_reason %} · {{ payment.failure_reason }}{% endif %}</small>{% else %}Не зарегистрирована{% endif %}</dd></div>{% endif %}</dl></div></section>
-<section class="panel"><div class="panel-head"><h2>Действия с заказом</h2></div><div class="panel-body order-actions">{% if can_confirm_payment %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm_payment"><button class="button" type="submit">Подтвердить оплату (перевод получен)</button></form>{% endif %}{% if can_ship %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="ship"><button class="button" type="submit">Передать в доставку</button></form>{% endif %}{% if can_deliver %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="deliver"><button class="button" type="submit">Отметить доставленным</button></form>{% endif %}{% if can_cancel %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="button secondary text-danger" type="submit">Отменить и оформить возврат</button></form><p class="section-note">При отмене товары вернутся на склад, оплаченный платёж получит статус возврата.</p>{% endif %}{% if not can_ship and not can_deliver and not can_cancel and not can_confirm_payment %}<p class="section-note">Для этого заказа нет доступных действий.</p>{% endif %}</div></section></div></div>
+<style>
+  .refund-panel { display:grid; grid-template-columns:minmax(0,1.4fr) 80px minmax(0,1fr) auto; gap:12px; align-items:end; padding:20px 24px 8px; }
+  .rf-field label { display:block; color:var(--muted); font-size:11px; margin-bottom:6px; }
+  .rf-note { padding:0 24px 20px; }
+  @media (max-width:760px) { .refund-panel { grid-template-columns:1fr 1fr; } .rf-item { grid-column:1 / -1; } .refund-panel .button { grid-column:1 / -1; } }
+  .refunded-note { display:block; color:#466b9b; font-size:11px; margin-top:3px; }
+  .timer-note { display:flex; gap:8px; align-items:center; background:#fff7e7; color:#865c16; border:1px solid #f0debb;
+                border-radius:8px; padding:10px 13px; font-size:12px; margin-top:10px; }
+  .money-line { display:flex; justify-content:space-between; padding:12px 24px; border-top:1px solid var(--line); font-size:13px; }
+  .money-line.refund { color:#466b9b; }
+</style>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">Обработка заказа</p>
+    <h1>Заказ #{{ order.pk }}</h1>
+    <p class="intro">{{ order.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_status.html' with status=order.status %}
+      {% if order.is_demo %}<span class="badge">демо-заказ</span>{% endif %}</p>
+  </div>
+  <a class="button secondary" href="{% url 'staff_orders' %}">← Все заказы</a>
+</div>
+{% if error %}<div class="message error" role="alert">{{ error }}</div>{% endif %}
+
+<div class="grid-two">
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Состав заказа</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Товар</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td class="cell-main">{{ item.product.name_ru|default:item.product.name_en }}<small>{{ item.product.sku }}</small>
+              {% if item.refunded_quantity %}<span class="refunded-note">Возвращено: {{ item.refunded_quantity }} шт.</span>{% endif %}</td>
+            <td class="number">${{ item.unit_price|floatformat:2 }}</td>
+            <td>{{ item.quantity }}</td>
+            <td class="number">${{ item.line_total|floatformat:2 }}</td>
+          </tr>
+        {% empty %}<tr><td colspan="4" class="empty">В заказе нет товаров.</td></tr>{% endfor %}
+        </tbody>
+      </table></div>
+      {% if order.discount_amount %}<div class="money-line"><span>Скидка {{ order.promo_code.code }}</span><span class="number">−${{ order.discount_amount|floatformat:2 }}</span></div>{% endif %}
+      {% if payment and payment.refunded_amount %}<div class="money-line refund"><span>Возвращено покупателю</span><span class="number">−${{ payment.refunded_amount|floatformat:2 }}</span></div>{% endif %}
+      <div class="order-total"><span>Итого оплачено</span><span class="number">${{ order.total_amount|floatformat:2 }}</span></div>
+    </section>
+
+    {% if can_refund %}
+    <section class="panel">
+      <div class="panel-head"><h2>Оформить возврат</h2><span class="muted" style="font-size:12px">Деньги вернутся покупателю, товар — на склад</span></div>
+      <form method="post" class="refund-panel">{% csrf_token %}<input type="hidden" name="action" value="refund">
+        <div class="rf-field rf-item"><label for="rf-item">Товар</label>
+          <select id="rf-item" name="item_id">{% for item in items %}{% if item.refundable_quantity %}<option value="{{ item.pk }}">{{ item.product.name_ru|default:item.product.name_en }} (до {{ item.refundable_quantity }} шт.)</option>{% endif %}{% endfor %}</select></div>
+        <div class="rf-field rf-qty"><label for="rf-qty">Кол-во</label><input id="rf-qty" type="number" name="quantity" min="1" value="1"></div>
+        <div class="rf-field rf-reason"><label for="rf-reason">Причина</label>
+          <select id="rf-reason" name="reason">{% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+        <button class="button" type="submit">Вернуть деньги</button>
+      </form>
+      <p class="section-note rf-note">Сумма считается по цене покупки с учётом скидки по промокоду. Последний возврат возвращает остаток до цента.</p>
+    </section>
+    {% endif %}
+
+    {% if refunds %}
+    <section class="panel">
+      <div class="panel-head"><h2>История возвратов</h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дата</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Причина</th><th>Оформил</th></tr></thead>
+        <tbody>{% for r in refunds %}
+          <tr><td>{{ r.created_at|date:'d.m.Y H:i' }}</td>
+              <td class="cell-main">{{ r.order_item.product.name_ru|default:r.order_item.product.name_en }}</td>
+              <td>{{ r.quantity }}</td><td class="number">${{ r.amount|floatformat:2 }}</td>
+              <td>{% for value, label in reasons %}{% if value == r.reason %}{{ label }}{% endif %}{% endfor %}</td>
+              <td class="muted">{{ r.created_by.username|default:'—' }}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+    </section>
+    {% endif %}
+  </div>
+
+  <div>
+    <section class="panel"><div class="panel-head"><h2>Покупатель и доставка</h2></div><div class="panel-body"><dl class="detail-list">
+      <div><dt>Покупатель</dt><dd>{{ order.user.get_full_name|default:order.user.username }}</dd></div>
+      <div><dt>Электронная почта</dt><dd>{{ order.user.email|default:'Не указана' }}</dd></div>
+      <div><dt>Телефон</dt><dd>{{ order.user.phone|default:'Не указан' }}</dd></div>
+      <div><dt>Адрес доставки</dt><dd>{{ order.shipping_address }}</dd></div>
+      {% if perms.shop.view_payment %}<div><dt>Оплата</dt><dd>{% if payment %}{% include 'shop/staff_status.html' with status=payment.status %} · ${{ payment.amount|floatformat:2 }}
+        <small class="muted" style="display:block;margin-top:4px">{% if payment.method == 'card' %}Карта{% if payment.card_last4 %} {{ payment.card_brand|upper }} •••• {{ payment.card_last4 }}{% if payment.saved_card_id %} (сохранённая){% endif %}{% endif %}{% elif payment.method == 'bank_transfer' %}Банковский перевод{% elif payment.method == 'qr' %}QR в приложении банка{% elif payment.method == 'installment' %}Рассрочка 0-0-{{ payment.installment_months }}{% else %}Наличными курьеру{% endif %} · {{ payment.provider_reference }}{% if payment.failure_reason %} · {% if payment.failure_reason == 'Payment time is over.' %}истёк срок оплаты{% else %}{{ payment.failure_reason }}{% endif %}{% endif %}</small>
+        {% if payment.qr.paid_at %}<div class="timer-note" style="background:#eef7f1;color:#1f6b43;border-color:#cfe8d8">📱 Оплачено по QR с устройства «{{ payment.qr.paid_device }}» · {{ payment.qr.paid_at|date:'d.m.Y H:i' }}</div>{% endif %}
+        {% if payment.status == 'pending' and payment.expires_at %}<div class="timer-note">⏱ Оплатить до {{ payment.expires_at|date:'d.m.Y H:i' }} — иначе заказ отменится сам</div>{% endif %}
+        {% else %}Не зарегистрирована{% endif %}</dd></div>{% endif %}
+    </dl></div></section>
+
+    <section class="panel"><div class="panel-head"><h2>Действия с заказом</h2></div><div class="panel-body order-actions">
+      {% if can_confirm_payment %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm_payment"><button class="button" type="submit">Подтвердить оплату (деньги получены)</button></form>{% endif %}
+      {% if can_ship %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="ship"><button class="button" type="submit">Передать в доставку</button></form>{% endif %}
+      {% if can_deliver %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="deliver"><button class="button" type="submit">Отметить доставленным</button></form>{% endif %}
+      {% if can_cancel %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button class="button secondary text-danger" type="submit">Отменить весь заказ и вернуть деньги</button></form>
+        <p class="section-note">Товары вернутся на склад, покупателю вернётся оставшаяся сумма. Чтобы вернуть только часть товаров, используйте блок «Оформить возврат».</p>{% endif %}
+      {% if not can_ship and not can_deliver and not can_cancel and not can_confirm_payment and not can_refund %}<p class="section-note">Для этого заказа нет доступных действий.</p>{% endif %}
+    </div></section>
+  </div>
+</div>
 {% endblock %}

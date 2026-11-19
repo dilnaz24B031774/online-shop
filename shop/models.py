@@ -221,6 +221,8 @@ class Order(models.Model):
     promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="orders")
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    # demo orders made by "seed_shop" - hits, trends and reports use only REAL orders
+    is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -249,6 +251,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="order_items")
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)  # price at purchase time
+    refunded_quantity = models.PositiveIntegerField(default=0)         # how many were returned
 
     class Meta:
         db_table = "order_items"
@@ -256,11 +259,46 @@ class OrderItem(models.Model):
             models.UniqueConstraint(fields=["order", "product"], name="order_item_unique_product"),
             models.CheckConstraint(condition=Q(quantity__gt=0), name="order_item_quantity_positive"),
             models.CheckConstraint(condition=Q(unit_price__gt=0), name="order_item_price_positive"),
+            # you cannot return more than you bought
+            models.CheckConstraint(condition=Q(refunded_quantity__lte=F("quantity")),
+                                   name="order_item_refund_not_over_quantity"),
         ]
 
     @property
     def line_total(self):
         return self.unit_price * self.quantity
+
+    @property
+    def refundable_quantity(self):
+        return self.quantity - self.refunded_quantity
+
+
+# ---------------------------------------------------------------------
+# 7b. SAVED CARD - a TOKEN instead of the card number (only type + last 4 digits)
+# ---------------------------------------------------------------------
+class SavedCard(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_cards")
+    token = models.CharField(max_length=40, unique=True)          # tok_... from the (demo) bank
+    brand = models.CharField(max_length=12)
+    last4 = models.CharField(max_length=4)
+    holder = models.CharField(max_length=60)
+    exp_month = models.PositiveSmallIntegerField()
+    exp_year = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "saved_cards"
+        ordering = ["-last_used_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(last4__regex=r"^[0-9]{4}$"), name="saved_card_last4_digits"),
+            models.CheckConstraint(condition=Q(exp_month__gte=1, exp_month__lte=12), name="saved_card_month_1_12"),
+            models.UniqueConstraint(fields=["user", "brand", "last4", "exp_month", "exp_year"],
+                                    name="saved_card_once_per_user"),
+        ]
+
+    def __str__(self):
+        return f"{self.brand.upper()} •••• {self.last4} ({self.user.username})"
 
 
 # ---------------------------------------------------------------------
@@ -292,6 +330,11 @@ class Payment(models.Model):
     card_last4 = models.CharField(max_length=4, blank=True)
     failure_reason = models.CharField(max_length=120, blank=True)
     installment_months = models.PositiveSmallIntegerField(null=True, blank=True)   # 3, 6, 12 or 24
+    saved_card = models.ForeignKey(SavedCard, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="payments")
+    # QR / bank transfer: after this moment an unpaid order is cancelled automatically
+    expires_at = models.DateTimeField(null=True, blank=True)
+    refunded_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     class Meta:
         db_table = "payments"
@@ -325,6 +368,9 @@ class Payment(models.Model):
                 | (~Q(method="installment") & Q(installment_months__isnull=True)),
                 name="payment_installment_months_valid",
             ),
+            # money back: never negative and never more than was paid
+            models.CheckConstraint(condition=Q(refunded_amount__gte=0) & Q(refunded_amount__lte=F("amount")),
+                                   name="payment_refund_not_over_amount"),
         ]
 
 
@@ -403,3 +449,106 @@ class LoginChallenge(models.Model):
 
     class Meta:
         db_table = "login_challenges"
+
+
+# ---------------------------------------------------------------------
+# 11. FAVORITE - liked products of a customer
+# ---------------------------------------------------------------------
+class Favorite(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "favorites"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "product"], name="favorite_one_per_user_product"),
+        ]
+
+
+# ---------------------------------------------------------------------
+# 12. REFUND - money back for some items of a paid order (one row per return)
+# ---------------------------------------------------------------------
+class Refund(models.Model):
+    class Reason(models.TextChoices):
+        DEFECT = "defect", "Defective item"
+        WRONG_ITEM = "wrong_item", "Wrong item"
+        CHANGED_MIND = "changed_mind", "Customer changed mind"
+        OTHER = "other", "Other"
+
+    order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name="refunds")
+    order_item = models.ForeignKey(OrderItem, on_delete=models.PROTECT, related_name="refunds")
+    quantity = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    reason = models.CharField(max_length=20, choices=Reason.choices, default=Reason.OTHER)
+    comment = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "refunds"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(quantity__gt=0), name="refund_quantity_positive"),
+            models.CheckConstraint(condition=Q(amount__gt=0), name="refund_amount_positive"),
+            models.CheckConstraint(condition=Q(reason__in=["defect", "wrong_item", "changed_mind", "other"]),
+                                   name="refund_reason_valid"),
+        ]
+
+
+# ---------------------------------------------------------------------
+# 13. STOCK SUBSCRIPTION - "tell me when it is back in stock"
+# ---------------------------------------------------------------------
+class StockSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="stock_subscriptions")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_subscriptions")
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified_at = models.DateTimeField(null=True, blank=True)     # filled when the product came back
+
+    class Meta:
+        db_table = "stock_subscriptions"
+        constraints = [
+            # only one ACTIVE subscription per customer and product
+            models.UniqueConstraint(fields=["user", "product"], condition=Q(notified_at__isnull=True),
+                                    name="stock_subscription_one_active"),
+        ]
+
+
+# ---------------------------------------------------------------------
+# 14. PROMO REDEMPTION - each customer can use a promo code only ONCE
+# ---------------------------------------------------------------------
+class PromoRedemption(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="promo_redemptions")
+    promo = models.ForeignKey(PromoCode, on_delete=models.CASCADE, related_name="redemptions")
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="promo_redemption")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "promo_redemptions"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "promo"], name="promo_once_per_user"),
+        ]
+
+
+# ---------------------------------------------------------------------
+# 15. QR PAYMENT - a one-time secret link inside the QR code (scanned with a phone)
+# ---------------------------------------------------------------------
+class QrPayment(models.Model):
+    payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name="qr")
+    token = models.CharField(max_length=64, unique=True)          # random, impossible to guess
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()                           # the same moment as the payment timer
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_device = models.CharField(max_length=80, blank=True)     # e.g. "iPhone · Safari"
+
+    class Meta:
+        db_table = "qr_payments"
+        constraints = [
+            models.CheckConstraint(condition=Q(expires_at__gt=F("created_at")), name="qr_expires_after_created"),
+            # a QR is paid only once and only with a device written down
+            models.CheckConstraint(condition=Q(paid_at__isnull=True) | ~Q(paid_device=""), name="qr_paid_has_device"),
+        ]
+
+    def __str__(self):
+        return f"QR for order #{self.payment.order_id}"

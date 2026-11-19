@@ -3,12 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  AppNotification, Address, Cart, CardInput, Category, Order, Product, ProductDetail, ProductFilters, PromoCheck, Review,
-  SearchResult, Tokens, User,
+  Address, AppNotification, CardInput, Cart, Category, Order, Product, ProductDetail, ProductFilters, PromoCheck, QrInfo, Review, SavedCard, SearchResult, Tokens, TopItem, User,
 } from './models';
 
 /** Address of the Django backend. Change it if the backend runs elsewhere. */
-export const API_URL = 'http://127.0.0.1:8000/api';
+/** The backend on the same computer as the website. Works for localhost and for a phone in the same Wi-Fi
+ *  (the site opened as http://192.168.x.x:4200 talks to http://192.168.x.x:8000). */
+export const API_URL = `${location.protocol}//${location.hostname || '127.0.0.1'}:8000/api`;
 
 export interface ProductQuery {
   q?: string; category?: string | number; sort?: string;
@@ -112,10 +113,53 @@ export class ApiService {
     return this.http.post<Cart>(`${API_URL}/cart/`, { product_id: productId, quantity });
   }
 
-  checkout(addressId: number, method: string, promoCode = '', card?: CardInput, installmentMonths?: number): Observable<Order> {
+  checkout(addressId: number, method: string, promoCode = '', card?: CardInput, installmentMonths?: number,
+           saved?: { id: number; cvc: string }, saveCard = false): Observable<Order> {
     return this.http.post<Order>(`${API_URL}/checkout/`, {
       address_id: addressId, method, promo_code: promoCode, card, installment_months: installmentMonths,
+      saved_card_id: saved?.id, cvc: saved?.cvc, save_card: saveCard,
     });
+  }
+
+  // ---------- saved cards (token on the server, only •••• 4242 here)
+  savedCards(): Observable<{ recent_days: number; cards: SavedCard[] }> {
+    return this.http.get<{ recent_days: number; cards: SavedCard[] }>(`${API_URL}/cards/`);
+  }
+
+  deleteCard(id: number): Observable<unknown> {
+    return this.http.delete(`${API_URL}/cards/${id}/`);
+  }
+
+  // ---------- back in stock
+  stockAlerts(): Observable<{ product_ids: number[] }> {
+    return this.http.get<{ product_ids: number[] }>(`${API_URL}/stock-alerts/`);
+  }
+
+  notifyMe(productId: number): Observable<unknown> {
+    return this.http.post(`${API_URL}/products/${productId}/notify-me/`, {});
+  }
+
+  cancelNotifyMe(productId: number): Observable<unknown> {
+    return this.http.delete(`${API_URL}/products/${productId}/notify-me/`);
+  }
+
+  // ---------- top: hits / new / trends (real purchases only)
+  top(kind: 'hits' | 'new' | 'trends', period = '30'): Observable<{ kind: string; items: TopItem[] }> {
+    const params = new HttpParams().set('kind', kind).set('period', period);
+    return this.http.get<{ kind: string; items: TopItem[] }>(`${API_URL}/top/`, { params });
+  }
+
+  // ---------- QR payment opened on a phone (no login: the secret token is the permission)
+  qrInfo(token: string): Observable<QrInfo> {
+    return this.http.get<QrInfo>(`${API_URL}/qr/${token}/`);
+  }
+
+  network(): Observable<{ lan_ip: string }> {
+    return this.http.get<{ lan_ip: string }>(`${API_URL}/network/`);
+  }
+
+  qrPay(token: string): Observable<QrInfo> {
+    return this.http.post<QrInfo>(`${API_URL}/qr/${token}/pay/`, {});
   }
 
   /** demo: "I have paid in my bank app" */
@@ -151,4 +195,20 @@ export class ApiService {
   cancelOrder(id: number): Observable<Order> {
     return this.http.post<Order>(`${API_URL}/orders/${id}/cancel/`, {});
   }
+
+   // favorites
+  favorites(): Observable<Product[]> {
+    return this.http.get<Product[]>(`${API_URL}/favorites/`);
+  }
+
+  addFavorite(productId: number): Observable<Product[]> {
+    return this.http.post<Product[]>(`${API_URL}/favorites/`, { product_id: productId });
+  }
+
+  removeFavorite(productId: number): Observable<Product[]> {
+    return this.http.delete<Product[]>(`${API_URL}/favorites/${productId}/`);
+  }
 }
+
+  
+
