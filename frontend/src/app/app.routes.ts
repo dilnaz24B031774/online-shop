@@ -13,5 +13,6 @@ export const routes: Routes = [
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./pages/orders.component').then(m => m.OrdersComponent) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
+  { path: 'favorites', canActivate: [authGuard], loadComponent: () => import('./pages/favorites.component').then(m => m.FavoritesComponent) },
   { path: '**', redirectTo: '' },
 ];

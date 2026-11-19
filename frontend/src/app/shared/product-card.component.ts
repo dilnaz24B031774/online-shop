@@ -24,6 +24,11 @@ import { FavoritesService } from '../core/favorites.service';
           <span class="badge top">#{{ rank() }}</span>
         }
       </a>
+      <button type="button" class="like" [class.on]="fav.isLiked(p.id)" (click)="like()"
+              [attr.aria-pressed]="fav.isLiked(p.id)"
+              [attr.aria-label]="fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
+      </button>
       <div class="body">
         <span class="meta">{{ p.brand || i.pick(p.category) }}</span>
         <h3><a [routerLink]="['/product', p.id]">{{ i.pick(p) }}</a></h3>
@@ -39,11 +44,6 @@ import { FavoritesService } from '../core/favorites.service';
         }
       </div>
     </article>
-    <button type="button" class="like" [class.on]="fav.isLiked(p.id)" (click)="like()"
-              [attr.aria-pressed]="fav.isLiked(p.id)"
-              [attr.aria-label]="fav.isLiked(p.id) ? i.t('product.unlike') : i.t('product.like')">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.5 1 5 3 1.5-2 3-3 5-3 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>
-      </button>
   `,
   styles: [`
     .card {
