@@ -26,7 +26,8 @@ SECRET_KEY = "django-insecure-q(&dj*)29wsgjq0unic%-)p(%fum2%eecmuv&it6w4e7jvwls1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# DEBUG: any host, so a phone in the same Wi-Fi can open http://<laptop-ip>:8000 (QR payment demo)
+ALLOWED_HOSTS = ["*"] if DEBUG else os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
 
 # Application definition
@@ -170,6 +171,8 @@ SIMPLE_JWT = {
 
 # The Angular dev server runs on port 4200
 CORS_ALLOWED_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
+# DEBUG: the website opened from a phone in the same Wi-Fi (http://192.168.x.x:4200, http://10.x.x.x:4200 ...)
+CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://[\w.-]+:4200$"] if DEBUG else []
 CORS_EXPOSE_HEADERS = ["Retry-After"]
 
 # Shared by the storefront login and the employee/admin login.
@@ -181,3 +184,13 @@ LOGIN_CHALLENGE_AFTER = 3
 LOGIN_IP_CHALLENGE_AFTER = 10
 LOGIN_CHALLENGE_TTL_SECONDS = 120
 CHALLENGE_MAX_ISSUED_PER_MINUTE = 20
+
+# ---------------------------------------------------------------------
+# Payments (Data & Database: Zhanabergenova Dilnaz)
+# ---------------------------------------------------------------------
+# An unpaid QR order is cancelled after this many minutes (for a quick demo: export PAYMENT_TIMEOUT_MINUTES=1)
+PAYMENT_TIMEOUT_MINUTES = int(os.environ.get("PAYMENT_TIMEOUT_MINUTES", "15"))
+# A bank transfer takes longer, so it waits 24 hours
+BANK_TRANSFER_TIMEOUT_HOURS = int(os.environ.get("BANK_TRANSFER_TIMEOUT_HOURS", "24"))
+# Saved cards are offered only if the customer paid with a card during the last N days
+SAVED_CARD_RECENT_DAYS = int(os.environ.get("SAVED_CARD_RECENT_DAYS", "90"))

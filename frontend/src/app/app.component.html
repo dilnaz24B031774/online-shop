@@ -1,3 +1,4 @@
+@if (!payPage()) {
 <div class="topbar">
   <div class="container topbar-in">
     <span class="note">
@@ -77,6 +78,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
         {{ i.t('catalog.all') }}
       </a>
+      <a routerLink="/top" routerLinkActive="active" class="top-link">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.6.7-2.8 1.6-3.7.2 1.4 1 2.2 2 2.2 0-2.8-.6-4.6.4-7z"/></svg>
+        {{ i.t('nav.top') }}
+      </a>
       @for (c of categories(); track c.id) {
         <a [routerLink]="['/catalog']" [queryParams]="{ category: c.id }">{{ i.pick(c) }}</a>
       }
@@ -91,10 +96,11 @@
   </nav>
 </header>
 
+}
 <main>
   <router-outlet />
 </main>
-
+@if (!payPage()) {
 <app-assistant />
 
 <footer class="foot">
@@ -131,3 +137,4 @@
     <span>{{ i.t('footer.text') }}</span>
   </div>
 </footer>
+}

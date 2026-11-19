@@ -159,7 +159,7 @@ class Command(BaseCommand):
 
         now = timezone.now()
         for username, days_ago, status, method, lines in ORDERS:
-            order = Order.objects.create(user=users[username], status=status,
+            order = Order.objects.create(user=users[username], status=status, is_demo=True,
                                          shipping_address=addresses[username].full_text())
             total = Decimal("0")
             for sku, qty in lines:

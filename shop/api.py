@@ -14,9 +14,10 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import payments, services
-from .models import Address, CartItem, Category, Favorite, Notification, Order, Product, Review
+from .models import Address, CartItem, Category, Favorite, Notification, Order, Product, Review, StockSubscription
 from .serializers import (
     AddressSerializer, CartItemSerializer, CategorySerializer, NotificationSerializer, OrderSerializer,
+    SavedCardSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
     UserSerializer,
 )
@@ -266,19 +267,24 @@ def checkout(request):
     method = request.data.get("method", "card")
     if method not in ("card", "bank_transfer", "cash_on_delivery", "qr", "installment"):
         return Response({"detail": "Unknown payment method."}, status=400)
-    card = request.data.get("card") if method == "card" else None
-    if method == "card" and not isinstance(card, dict):
+    saved_card_id = _int(request.data.get("saved_card_id")) if method == "card" else None
+    card = request.data.get("card") if method == "card" and not saved_card_id else None
+    if method == "card" and not saved_card_id and not isinstance(card, dict):
         return Response({"detail": "Enter the card details.", "field": "number"}, status=400)
+    services.expire_unpaid_orders(user=request.user)
     try:
         order = services.place_order(request.user, address, method,
                                      promo_code=request.data.get("promo_code", ""), card=card,
-                                     installment_months=_int(request.data.get("installment_months")))
+                                     installment_months=_int(request.data.get("installment_months")),
+                                     saved_card_id=saved_card_id, cvc=str(request.data.get("cvc", "")),
+                                     save_card=bool(request.data.get("save_card")))
     except payments.CardInvalid as e:
         return Response({"detail": str(e), "field": e.field}, status=400)
-    except (services.OutOfStockError, services.EmptyCartError, services.PromoCodeError,
-            services.PaymentMethodError) as e:
+    except services.PromoCodeError as e:
+        return Response({"detail": str(e), "code": e.code}, status=400)
+    except (services.OutOfStockError, services.EmptyCartError, services.PaymentMethodError) as e:
         return Response({"detail": str(e)}, status=400)
-    data = OrderSerializer(Order.objects.select_related("payment", "promo_code").get(pk=order.pk)).data
+    data = OrderSerializer(_order_qs().get(pk=order.pk)).data
     if order.status == Order.Status.CANCELLED:          # the bank declined the card
         return Response({"detail": "The bank declined the payment: " + order.payment.failure_reason,
                          "code": "card_declined", "order": data}, status=402)
@@ -288,9 +294,13 @@ def checkout(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def my_orders(request):
-    qs = (Order.objects.filter(user=request.user).select_related("payment")
-          .prefetch_related("items__product__category"))
-    return Response(OrderSerializer(qs, many=True).data)
+    services.expire_unpaid_orders(user=request.user)        # "lazy" payment timer
+    return Response(OrderSerializer(_order_qs().filter(user=request.user), many=True).data)
+
+
+def _order_qs():
+    return (Order.objects.select_related("payment", "payment__qr", "promo_code")
+            .prefetch_related("items__product__category", "refunds__order_item__product"))
 
 
 @api_view(["POST"])
@@ -302,8 +312,7 @@ def cancel_order(request, pk):
         order = services.cancel_order(order)
     except services.CancelNotAllowedError as e:
         return Response({"detail": str(e)}, status=400)
-    order = Order.objects.select_related("payment").prefetch_related("items__product__category").get(pk=order.pk)
-    return Response(OrderSerializer(order).data)
+    return Response(OrderSerializer(_order_qs().get(pk=order.pk)).data)
 
 
 @api_view(["POST"])
@@ -327,9 +336,9 @@ def promo_check(request):
     """POST {code} -> discount for the current cart (nothing is saved)"""
     total = services.cart_total(request.user)
     try:
-        promo = services.check_promo(request.data.get("code", ""), total)
+        promo = services.check_promo(request.data.get("code", ""), total, user=request.user)
     except services.PromoCodeError as e:
-        return Response({"valid": False, "detail": str(e)}, status=400)
+        return Response({"valid": False, "detail": str(e), "code": e.code}, status=400)
     discount = services.discount_for(promo, total)
     return Response({"valid": True, "code": promo.code, "percent": promo.discount_percent,
                      "subtotal": f"{total:.2f}", "discount": f"{discount:.2f}",
@@ -374,9 +383,135 @@ def pay_qr(request, pk):
     """POST /api/orders/<id>/pay-qr/ - demo: the customer has paid in the bank app.
     In a real shop the bank calls the shop's server; here the button plays the bank."""
     order = get_object_or_404(Order, pk=pk, user=request.user, payment__method="qr")
+    services.expire_unpaid_orders(user=request.user)
     try:
         services.confirm_payment(order)
+    except services.PaymentExpiredError as e:
+        return Response({"detail": str(e), "code": "expired", "order": OrderSerializer(_order_qs().get(pk=pk)).data},
+                        status=400)
     except services.OrderTransitionError as e:
-        return Response({"detail": str(e)}, status=400)
-    order = Order.objects.select_related("payment", "promo_code").prefetch_related("items__product__category").get(pk=pk)
-    return Response(OrderSerializer(order).data)
+        return Response({"detail": str(e), "code": "not_pending",
+                         "order": OrderSerializer(_order_qs().get(pk=pk)).data}, status=400)
+    return Response(OrderSerializer(_order_qs().get(pk=pk)).data)
+
+
+# ---------------------------------------------------------------- top: hits, new, trends (real data only)
+TOP_PERIODS = {"7": 7, "30": 30, "90": 90, "all": None}
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def top(request):
+    """GET /api/top/?kind=hits|new|trends&period=7|30|90|all
+    Hits and trends count only real paid purchases of customers (no demo orders)."""
+    kind = request.GET.get("kind", "hits")
+    if kind == "new":
+        products = list(services.top_new(limit=12))
+        found = {p.id: p for p in _products().filter(id__in=[p.id for p in products])}
+        return Response({"kind": kind, "items": [{"product": ProductSerializer(found[p.id]).data}
+                                                  for p in products if p.id in found]})
+    if kind == "trends":
+        rows = services.top_trends(limit=12)
+        found = {p.id: p for p in _products().filter(id__in=[r[0] for r in rows])}
+        return Response({"kind": kind, "items": [
+            {"product": ProductSerializer(found[pid]).data, "units": units, "prev_units": before, "growth": growth}
+            for pid, units, before, growth in rows if pid in found]})
+    days = TOP_PERIODS.get(request.GET.get("period", "30"), 30)
+    rows = services.top_hits(days=days, limit=12)
+    found = {p.id: p for p in _products().filter(id__in=[r[0] for r in rows])}
+    return Response({"kind": "hits", "items": [{"product": ProductSerializer(found[pid]).data, "units": units}
+                                               for pid, units in rows if pid in found]})
+
+
+# ---------------------------------------------------------------- back in stock
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def stock_alerts(request):
+    """GET /api/stock-alerts/ -> ids of products the customer waits for"""
+    ids = StockSubscription.objects.filter(user=request.user, notified_at=None).values_list("product_id", flat=True)
+    return Response({"product_ids": list(ids)})
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+def notify_me(request, pk):
+    """POST - tell me when the product is back. DELETE - I do not wait any more."""
+    product = get_object_or_404(Product, pk=pk, is_active=True)
+    if request.method == "DELETE":
+        services.unsubscribe_stock(request.user, product.pk)
+        return Response({"subscribed": False})
+    try:
+        services.subscribe_stock(request.user, product)
+    except services.StockSubscriptionError as e:
+        return Response({"detail": str(e), "code": "in_stock"}, status=400)
+    return Response({"subscribed": True}, status=201)
+
+
+# ---------------------------------------------------------------- saved cards
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def saved_cards(request):
+    """GET /api/cards/ - saved cards, only if the customer paid by card recently"""
+    from django.conf import settings
+    return Response({"recent_days": settings.SAVED_CARD_RECENT_DAYS,
+                     "cards": SavedCardSerializer(services.available_saved_cards(request.user), many=True).data})
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_card(request, pk):
+    from .models import SavedCard
+    deleted, _ = SavedCard.objects.filter(pk=pk, user=request.user).delete()
+    if not deleted:
+        return Response({"detail": "Not found."}, status=404)
+    return Response(status=204)
+
+
+# ---------------------------------------------------------------- QR scanned with a phone
+def _qr_data(qr):
+    order = qr.payment.order
+    return {"order_id": order.pk, "amount": f"{qr.payment.amount:.2f}", "shop": "Sauda",
+            "items": sum(i.quantity for i in order.items.all()), "state": services.qr_state(qr),
+            "expires_at": qr.expires_at, "created_at": qr.created_at, "paid_at": qr.paid_at,
+            "paid_device": qr.paid_device}
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def qr_info(request, token):
+    """GET /api/qr/<token>/ - what the phone shows. The secret token itself is the permission
+    (like a real payment link), no login on the phone is needed."""
+    from .models import QrPayment
+    services.expire_unpaid_orders()
+    qr = QrPayment.objects.select_related("payment__order").filter(token=token).first()
+    if qr is None:
+        return Response({"state": "not_found"}, status=404)
+    return Response(_qr_data(qr))
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def qr_pay(request, token):
+    """POST /api/qr/<token>/pay/ - the customer confirmed on the phone (demo bank)."""
+    services.expire_unpaid_orders()
+    try:
+        qr = services.pay_by_qr(token, request.META.get("HTTP_USER_AGENT", ""))
+    except services.QrError as e:
+        return Response({"state": e.code}, status=404 if e.code == "not_found" else 409)
+    return Response(_qr_data(qr))
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def network(request):
+    """GET /api/network/ -> the laptop's address in the Wi-Fi, so the QR link opens on a phone
+    even when the website itself was opened as http://localhost:4200."""
+    import socket
+    ip = ""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))        # no data is sent, it only picks the Wi-Fi interface
+            ip = s.getsockname()[0]
+    except OSError:
+        pass
+    return Response({"lan_ip": "" if ip.startswith("127.") else ip})

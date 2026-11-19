@@ -24,6 +24,7 @@ export interface Product {
   category: Category;
   avg_rating: number | null;
   review_count: number;
+  created_at?: string;
 }
 
 export interface Review {
@@ -78,6 +79,7 @@ export interface OrderItem {
   quantity: number;
   unit_price: string;
   line_total: string;
+  refunded_quantity?: number;
 }
 
 export interface Order {
@@ -94,6 +96,54 @@ export interface Order {
   card_brand?: string;
   card_last4?: string;
   installment_months?: number | null;
+  expires_at?: string | null;          // QR / transfer: pay before this moment
+  refunded_amount?: string;
+  failure_reason?: string;
+  refunds?: Refund[];
+  qr_token?: string | null;            // only for my own unpaid QR order
+  qr_paid_device?: string;
+}
+
+export interface QrInfo {
+  order_id: number;
+  amount: string;
+  shop: string;
+  items: number;
+  state: 'pending' | 'paid' | 'expired' | 'cancelled' | 'not_found';
+  expires_at: string;
+  created_at: string;
+  paid_at: string | null;
+  paid_device: string;
+}
+
+export interface Refund {
+  id: number;
+  product_id: number;
+  name_en: string;
+  name_ru: string;
+  name_kk: string;
+  quantity: number;
+  amount: string;
+  reason: string;
+  created_at: string;
+}
+
+/** a saved card: only type, last 4 digits and expiry ever reach the browser */
+export interface SavedCard {
+  id: number;
+  brand: string;
+  last4: string;
+  holder: string;
+  exp_month: number;
+  exp_year: number;
+  last_used_at: string;
+}
+
+export interface TopItem {
+  product: Product;
+  units?: number;
+  prev_units?: number;
+  growth?: number | null;              // null = first sales this week
 }
 
 /** typed by the customer, sent once to /checkout/, never saved in the browser */

@@ -3,7 +3,9 @@ Serializers turn database rows into JSON for the Angular frontend (and back).
 """
 from rest_framework import serializers
 
-from .models import Address, CartItem, Category, Notification, Order, OrderItem, Product, Review, User
+from .models import (
+    Address, CartItem, Category, Notification, Order, OrderItem, Product, Refund, Review, SavedCard, User,
+)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -25,6 +27,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "id", "sku", "name_en", "name_ru", "name_kk",
             "description_en", "description_ru", "description_kk",
             "price", "stock_quantity", "brand", "image_url", "category", "avg_rating", "review_count",
+            "created_at",
         ]
 
 
@@ -95,7 +98,26 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ["id", "product", "quantity", "unit_price", "line_total"]
+        fields = ["id", "product", "quantity", "unit_price", "line_total", "refunded_quantity"]
+
+
+class RefundSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source="order_item.product_id", read_only=True)
+    name_en = serializers.CharField(source="order_item.product.name_en", read_only=True)
+    name_ru = serializers.CharField(source="order_item.product.name_ru", read_only=True)
+    name_kk = serializers.CharField(source="order_item.product.name_kk", read_only=True)
+
+    class Meta:
+        model = Refund
+        fields = ["id", "product_id", "name_en", "name_ru", "name_kk", "quantity", "amount", "reason", "created_at"]
+
+
+class SavedCardSerializer(serializers.ModelSerializer):
+    """Only what is safe to show: type, last 4 digits, expiry. The token is never sent to the browser."""
+
+    class Meta:
+        model = SavedCard
+        fields = ["id", "brand", "last4", "holder", "exp_month", "exp_year", "last_used_at"]
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -106,12 +128,28 @@ class OrderSerializer(serializers.ModelSerializer):
     card_brand = serializers.CharField(source="payment.card_brand", read_only=True, default="")
     card_last4 = serializers.CharField(source="payment.card_last4", read_only=True, default="")
     installment_months = serializers.IntegerField(source="payment.installment_months", read_only=True, default=None)
+    expires_at = serializers.DateTimeField(source="payment.expires_at", read_only=True, default=None)
+    refunded_amount = serializers.DecimalField(source="payment.refunded_amount", max_digits=12,
+                                               decimal_places=2, read_only=True, default="0.00")
+    failure_reason = serializers.CharField(source="payment.failure_reason", read_only=True, default="")
+    refunds = RefundSerializer(many=True, read_only=True)
+    qr_token = serializers.SerializerMethodField()
+    qr_paid_device = serializers.SerializerMethodField()
+
+    def get_qr_token(self, order):
+        qr = getattr(getattr(order, "payment", None), "qr", None)
+        return qr.token if qr and order.status == "pending" else None
+
+    def get_qr_paid_device(self, order):
+        qr = getattr(getattr(order, "payment", None), "qr", None)
+        return qr.paid_device if qr and qr.paid_at else ""
 
     class Meta:
         model = Order
         fields = ["id", "status", "shipping_address", "total_amount", "discount_amount", "promo",
                   "created_at", "items", "payment_method", "payment_status", "card_brand", "card_last4",
-                  "installment_months"]
+                  "installment_months", "expires_at", "refunded_amount", "failure_reason", "refunds",
+                  "qr_token", "qr_paid_device"]
 
 
 class NotificationSerializer(serializers.ModelSerializer):

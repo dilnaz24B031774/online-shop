@@ -71,7 +71,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
         <div class="deals-head">
           <div>
             <h2>{{ i.t('home.deals') }}</h2>
-            <p>{{ i.t('home.dealsText') }}</p>
+            <p>{{ i.t('home.dealsReal') }} · <a routerLink="/top" class="all-top">{{ i.t('home.allTop') }} →</a></p>
           </div>
           <div class="tabs" role="tablist">
             <button type="button" role="tab" [class.on]="tab() === 0" (click)="tab.set(0)">{{ i.t('home.tabAll') }}</button>
@@ -80,11 +80,19 @@ import { ProductImageComponent } from '../shared/product-image.component';
             }
           </div>
         </div>
-        <div class="grid five">
-          @for (p of dealProducts(); track p.id; let idx = $index) {
-            <app-product-card [product]="p" [rank]="tab() === 0 ? idx + 1 : null" />
-          }
-        </div>
+        @if (tab() === 0 && bestSellers().length === 0) {
+          <div class="no-hits">
+            <strong>{{ i.t('home.noHits') }}</strong>
+            <span>{{ i.t('home.noHitsText') }}</span>
+            <a routerLink="/top" [queryParams]="{ kind: 'new' }" class="btn btn-sun">{{ i.t('home.seeNew') }}</a>
+          </div>
+        } @else {
+          <div class="grid five">
+            @for (p of dealProducts(); track p.id; let idx = $index) {
+              <app-product-card [product]="p" [rank]="tab() === 0 ? idx + 1 : null" />
+            }
+          </div>
+        }
       </div>
     </section>
 
@@ -166,6 +174,13 @@ import { ProductImageComponent } from '../shared/product-image.component';
     .deals-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem 2rem; flex-wrap: wrap; margin-bottom: 1.3rem; }
     .deals h2 { color: #fff; margin-bottom: .2rem; }
     .deals p { color: #b9d2c6; margin: 0; }
+    .all-top { color: var(--amber); font-weight: 700; }
+    .no-hits {
+      display: flex; align-items: center; gap: .6rem 1.2rem; flex-wrap: wrap; color: #d7e7df;
+      border: 1px dashed rgba(255,255,255,.28); border-radius: 16px; padding: 1.4rem 1.6rem;
+    }
+    .no-hits strong { color: #fff; font-size: 1.05rem; }
+    .no-hits span { flex: 1 1 260px; }
     .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
     .tabs button {
       border: 1px solid rgba(255,255,255,.22); background: transparent; color: #e3efe9;

@@ -8,11 +8,12 @@ import { Product } from '../core/models';
 import { ProductImageComponent } from './product-image.component';
 import { StarsComponent } from './stars.component';
 import { FavoritesService } from '../core/favorites.service';
+import { NotifyButtonComponent } from './notify-button.component';
 
 
 @Component({
   selector: 'app-product-card',
-  imports: [RouterLink, ProductImageComponent, StarsComponent],
+  imports: [RouterLink, ProductImageComponent, StarsComponent, NotifyButtonComponent],
   template: `
     @let p = product();
     <article class="card">
@@ -31,6 +32,7 @@ import { FavoritesService } from '../core/favorites.service';
         <span class="price">\${{ p.price }}</span>
         @if (p.stock_quantity === 0) {
           <span class="sold">{{ i.t('product.soldOut') }}</span>
+          <app-notify-button [productId]="p.id" />
         } @else {
           <button class="add" type="button" (click)="add()" [disabled]="busy()" [class.done]="cart.quantityOf(p.id) > 0">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/></svg>
@@ -46,6 +48,8 @@ import { FavoritesService } from '../core/favorites.service';
       </button>
   `,
   styles: [`
+    /* the heart button is positioned inside the card, so the card host must be the reference box */
+    :host { display: block; position: relative; height: 100%; min-width: 0; }
     .card {
       background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden;
       display: flex; flex-direction: column; height: 100%; transition: box-shadow .15s, border-color .15s;
@@ -76,7 +80,7 @@ import { FavoritesService } from '../core/favorites.service';
     .add:hover { background: var(--green-700); color: #fff; }
     .add.done { background: var(--green-50); border-color: var(--green-50); color: var(--green-700); }
     .add svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .sold { margin-top: auto; color: var(--muted); font-weight: 600; font-size: .86rem; padding: .55em 0; }
+    .sold { margin-top: auto; color: var(--red); font-weight: 600; font-size: .8rem; padding: .2em 0 .45em; }
     .like {
       position: absolute; right: 10px; top: 10px; z-index: 1; width: 36px; height: 36px; border-radius: 50%;
       border: 0; background: #fff; cursor: pointer; display: grid; place-items: center;

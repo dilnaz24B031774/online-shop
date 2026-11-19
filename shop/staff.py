@@ -10,11 +10,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_safe
 
-from .models import Category, Order, Product, User
+from .models import Category, Order, OrderItem, Product, User
 from .roles import ROLE_CHOICES
 from .services import (
     STAFF_CAN_CANCEL, CancelNotAllowedError, OrderTransitionError, cancel_order,
     confirm_payment, fulfill_order,
+)
+from .services import (
+    REFUNDABLE_STATUSES, PaymentExpiredError, RefundError, expire_unpaid_orders, refund_item,
 )
 
 
@@ -243,6 +246,7 @@ def orders(request):
 @require_http_methods(["GET", "HEAD", "POST"])
 def order_detail(request, pk):
     _require_view(request, "order")
+    expire_unpaid_orders()                 # the payment timer: cancel orders that were not paid in time
     order = get_object_or_404(Order.objects.select_related("user", "payment"), pk=pk)
     can_change = request.user.has_perm("shop.change_order")
     error = ""
@@ -257,8 +261,25 @@ def order_detail(request, pk):
                 confirm_payment(order)
             elif action in ("ship", "deliver"):
                 fulfill_order(order, Order.Status.SHIPPED if action == "ship" else Order.Status.DELIVERED)
+            elif action == "refund":
+                try:
+                    qty = int(request.POST.get("quantity", "0"))
+                    item_id = int(request.POST.get("item_id", "0"))
+                except ValueError:
+                    qty = item_id = 0
+                refund = refund_item(order, item_id, qty, request.POST.get("reason", "other"),
+                                     request.POST.get("comment", "").strip(), by=request.user)
+                messages.success(request, f"Возврат оформлен: {refund.quantity} шт. на ${refund.amount}. "
+                                          "Товар вернулся на склад, покупатель получил уведомление.")
+                return redirect("staff_order_detail", pk=order.pk)
             else:
                 error = "Неизвестное действие. Выберите действие для заказа."
+        except RefundError as e:
+            error = {"Only paid orders can be refunded.": "Возврат возможен только по оплаченному заказу.",
+                     "Nothing left to refund.": "По этому заказу уже всё возвращено."}.get(
+                str(e), f"Возврат не оформлен: можно вернуть от 1 до {_max_refund(order, request)} шт.")
+        except PaymentExpiredError:
+            error = "Срок оплаты истёк — заказ уже отменён автоматически."
         except (CancelNotAllowedError, OrderTransitionError):
             error = "Статус заказа уже изменился или это действие недоступно. Обновите страницу."
         if not error:
@@ -275,8 +296,21 @@ def order_detail(request, pk):
         "payment": payment,
         "can_deliver": can_change and order.status == Order.Status.SHIPPED,
         "can_cancel": can_change and order.status in STAFF_CAN_CANCEL,
+        "can_refund": can_change and order.status in REFUNDABLE_STATUSES and payment is not None
+                      and payment.status == "paid",
+        "refunds": order.refunds.select_related("order_item__product", "created_by"),
+        "reasons": [("defect", "Брак"), ("wrong_item", "Не тот товар"), ("changed_mind", "Передумал(а)"),
+                    ("other", "Другое")],
         "error": error, "active_section": "orders",
     })
+
+
+def _max_refund(order, request):
+    try:
+        item = order.items.get(pk=int(request.POST.get("item_id", "0")))
+        return item.refundable_quantity
+    except (ValueError, OrderItem.DoesNotExist):
+        return 0
 
 
 @require_safe

@@ -11,10 +11,11 @@ import { ProductDetail } from '../core/models';
 import { ProductImageComponent } from '../shared/product-image.component';
 import { StarsComponent } from '../shared/stars.component';
 import { FavoritesService } from '../core/favorites.service';
+import { NotifyButtonComponent } from '../shared/notify-button.component';
 
 @Component({
   selector: 'app-product',
-  imports: [RouterLink, FormsModule, DatePipe, ProductImageComponent, StarsComponent],
+  imports: [RouterLink, FormsModule, DatePipe, ProductImageComponent, StarsComponent, NotifyButtonComponent],
   template: `
     <div class="container page">
       <a routerLink="/catalog" class="back">← {{ i.t('product.back') }}</a>
@@ -62,6 +63,9 @@ import { FavoritesService } from '../core/favorites.service';
                 @if (cart.quantityOf(p.id) > 0) {
                   <p class="in-cart">{{ i.t('product.added') }}: {{ cart.quantityOf(p.id) }} · <a routerLink="/cart">{{ i.t('nav.cart') }}</a></p>
                 }
+              }
+              @if (p.stock_quantity === 0) {
+                <app-notify-button [productId]="p.id" size="big" />
               }
               @if (cartError()) { <div class="alert alert-error">{{ cartError() }}</div> }
             </div>

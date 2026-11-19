@@ -97,3 +97,26 @@ def charge(card: dict, amount) -> ChargeResult:
     reference = "DEMO-" + secrets.token_hex(6).upper()
     reason = DECLINED_CARDS.get(number, "")
     return ChargeResult(approved=not reason, brand=brand, last4=number[-4:], reference=reference, reason=reason)
+
+
+def card_expiry(card: dict) -> tuple[int, int]:
+    """(month, 4-digit year) of an already validated card."""
+    month, year = int(card.get("exp_month")), int(card.get("exp_year"))
+    return month, (year + 2000 if year < 100 else year)
+
+
+def new_token() -> str:
+    """The bank gives the shop a random token instead of the card number."""
+    return "tok_" + secrets.token_hex(12)
+
+
+def charge_token(saved_card, cvc: str, amount) -> ChargeResult:
+    """Pay with a saved card: the shop sends only the TOKEN (+ CVC typed again by the customer)."""
+    cvc = str(cvc or "")
+    if not cvc.isdigit() or len(cvc) != (4 if saved_card.brand == "amex" else 3):
+        raise CardInvalid("cvc", "CVC is 3 digits on the back of the card.")
+    today = timezone.localdate()
+    if (saved_card.exp_year, saved_card.exp_month) < (today.year, today.month):
+        raise CardInvalid("saved_card", "This card has expired. Please add a new card.")
+    return ChargeResult(approved=True, brand=saved_card.brand, last4=saved_card.last4,
+                        reference="DEMO-" + secrets.token_hex(6).upper())

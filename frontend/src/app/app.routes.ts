@@ -12,6 +12,8 @@ export const routes: Routes = [
   { path: 'cart', canActivate: [authGuard], loadComponent: () => import('./pages/cart.component').then(m => m.CartComponent) },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./pages/orders.component').then(m => m.OrdersComponent) },
+  { path: 'pay/:token', loadComponent: () => import('./pages/pay.component').then(m => m.PayComponent) },
+  { path: 'top', loadComponent: () => import('./pages/top.component').then(m => m.TopComponent) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
   { path: '**', redirectTo: '' },
 ];

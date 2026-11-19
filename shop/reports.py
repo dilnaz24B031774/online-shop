@@ -37,16 +37,19 @@ def _check(request):
 @require_safe
 def reports(request):
     _check(request)
+    services.expire_unpaid_orders()
     period, since = _period(request)
     threshold = _threshold(request)
-    categories = services.report_sales_by_category(since)
+    demo = request.GET.get("demo") == "1"          # demo orders from seed_shop are hidden by default
     return render(request, "shop/staff_reports.html", {
         "active_section": "reports", "periods": PERIODS, "period": period, "threshold": threshold,
-        "summary": services.report_summary(since),
-        "categories": categories,
-        "best": services.report_best_sellers(since),
+        "demo": demo, "demo_q": "&demo=1" if demo else "",
+        "summary": services.report_summary(since, demo),
+        "categories": services.report_sales_by_category(since, demo),
+        "best": services.report_best_sellers(since, demo=demo),
         "low_stock": services.report_low_stock(threshold),
-        "promos": services.report_promo_usage(since),
+        "promos": services.report_promo_usage(since, demo),
+        "refunds": services.report_refunds(since, demo),
     })
 
 
@@ -60,7 +63,7 @@ def reports_csv(request, kind):
     w = csv.writer(response)
     if kind == "categories":
         w.writerow(["Категория", "Продано, шт.", "Выручка, $", "Доля, %"])
-        for r in services.report_sales_by_category(since):
+        for r in services.report_sales_by_category(since, request.GET.get('demo') == '1'):
             w.writerow([r["name"], r["units"], r["revenue"], r["share"]])
     elif kind == "low-stock":
         w.writerow(["SKU", "Товар", "Категория", "Остаток"])
@@ -68,7 +71,7 @@ def reports_csv(request, kind):
             w.writerow([p.sku, p.name_ru or p.name_en, p.category.name_ru or p.category.name_en, p.stock_quantity])
     elif kind == "best-sellers":
         w.writerow(["SKU", "Товар", "Продано, шт.", "Выручка, $", "Остаток"])
-        for r in services.report_best_sellers(since, limit=100):
+        for r in services.report_best_sellers(since, limit=100, demo=request.GET.get('demo') == '1'):
             w.writerow([r["product__sku"], r["product__name_ru"] or r["product__name_en"], r["units"],
                         r["revenue"], r["product__stock_quantity"]])
     else:
