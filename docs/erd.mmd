@@ -3,11 +3,14 @@ erDiagram
     USERS ||--o{ ORDERS : "places"
     USERS ||--o{ CART_ITEMS : "has in cart"
     USERS ||--o{ REVIEWS : "writes"
+    USERS ||--o| TELEGRAM_ACCOUNTS : "links recovery chat"
+    USERS |o--o{ TELEGRAM_CHALLENGES : "requests recovery"
     USERS ||--o{ NOTIFICATIONS : "receives"
     CATEGORIES ||--o{ PRODUCTS : "contains"
     PRODUCTS ||--o{ CART_ITEMS : "is in"
     PRODUCTS ||--o{ ORDER_ITEMS : "is sold in"
     PRODUCTS ||--o{ REVIEWS : "gets"
+    ORDER_ITEMS |o--o| REVIEWS : "verifies purchase"
     ORDERS ||--|{ ORDER_ITEMS : "contains"
     ORDERS ||--|| PAYMENTS : "is paid by"
     ORDERS |o--o{ NOTIFICATIONS : "about"
@@ -29,6 +32,22 @@ erDiagram
         varchar city
         varchar street
         boolean is_default "1 per user"
+    }
+    TELEGRAM_ACCOUNTS {
+        bigint id PK
+        bigint user_id FK,UK
+        bigint telegram_id UK "verified private chat"
+        varchar username "display only"
+        timestamp linked_at
+    }
+    TELEGRAM_CHALLENGES {
+        varchar key PK "nonce HMAC"
+        bigint user_id FK "nullable for unknown accounts"
+        varchar purpose "link|reset"
+        varchar code_digest "HMAC only"
+        timestamp expires_at
+        smallint attempts "max 5"
+        timestamp consumed_at
     }
     CATEGORIES {
         bigint id PK
@@ -82,6 +101,7 @@ erDiagram
         bigint id PK
         bigint user_id FK
         bigint product_id FK
+        bigint order_item_id FK,UK "nullable for historical reviews"
         smallint rating "1..5"
         text comment
     }

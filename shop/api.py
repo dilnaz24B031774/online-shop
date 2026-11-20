@@ -15,7 +15,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import payments, services
-from .models import Address, CartItem, Category, Notification, Order, Product, Review, User
+from .models import Address, CartItem, Category, Notification, Order, OrderItem, Product, Review, User
+from .review_rules import ReviewPurchaseSerializer, eligible_purchases, review_eligibility
 from .serializers import (
     AddressSerializer, CartItemSerializer, CategorySerializer, NotificationSerializer, OrderSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
@@ -121,7 +122,12 @@ def product_filters(request):
 @permission_classes([AllowAny])
 def product_detail(request, pk):
     product = get_object_or_404(_products().prefetch_related("reviews__user"), pk=pk)
-    return Response(ProductDetailSerializer(product).data)
+    data = ProductDetailSerializer(product).data
+    data["review_eligibility"] = review_eligibility(request.user, product)
+    response = Response(data)
+    # Eligibility contains the current buyer's unreviewed purchases.
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @api_view(["GET"])
@@ -156,20 +162,45 @@ def search(request):
 @permission_classes([IsAuthenticated])
 def add_review(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
-    duplicate = {"code": "review_exists", "detail": "You have already reviewed this product."}
-    if Review.objects.filter(user=request.user, product=product).exists():
-        return Response(duplicate, status=400)
+    duplicate = {"code": "review_exists", "detail": "You have already reviewed this purchase."}
+    purchase_required = {"code": "purchase_required", "detail": "Buy and pay for this product before leaving a review."}
     serializer = ReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    try:
-        # The unique constraint also protects simultaneous submissions from
-        # different tabs. Roll back the failed insert before querying again.
-        with transaction.atomic():
-            serializer.save(user=request.user, product=product)
-    except IntegrityError:
-        if Review.objects.filter(user=request.user, product=product).exists():
+    purchase_input = ReviewPurchaseSerializer(data=request.data)
+    purchase_input.is_valid(raise_exception=True)
+    selected_id = purchase_input.validated_data.get("order_item_id")
+    if selected_id is not None:
+        purchase = OrderItem.objects.filter(pk=selected_id, order__user=request.user, product=product).first()
+    else:
+        purchases = eligible_purchases(request.user, product)
+        purchase = purchases.filter(review__isnull=True).order_by("order__created_at", "pk").first()
+        if purchase is None and purchases.exists():
             return Response(duplicate, status=400)
-        raise
+    if purchase is None:
+        return Response(purchase_required, status=403)
+
+    with transaction.atomic():
+        # Cancellation and fulfillment acquire locks in the same order. Check
+        # payment/state again after locking, rather than trusting an earlier
+        # product page or a purchase selected before a concurrent cancellation.
+        order = Order.objects.select_for_update().filter(pk=purchase.order_id, user=request.user).first()
+        if order is None:
+            return Response(purchase_required, status=403)
+        purchase = OrderItem.objects.select_for_update().filter(pk=purchase.pk, order=order, product=product).first()
+        if purchase is None:
+            return Response(purchase_required, status=403)
+        if not eligible_purchases(request.user, product).filter(pk=purchase.pk).exists():
+            return Response(purchase_required, status=403)
+        if Review.objects.filter(order_item=purchase).exists():
+            return Response(duplicate, status=400)
+        try:
+            with transaction.atomic():
+                serializer.save(user=request.user, product=product, order_item=purchase)
+        except IntegrityError:
+            # Also handle writes outside this API racing the unique order line.
+            if Review.objects.filter(order_item=purchase).exists():
+                return Response(duplicate, status=400)
+            raise
     return Response(serializer.data, status=201)
 
 

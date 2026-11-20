@@ -184,8 +184,16 @@ class Command(BaseCommand):
                                         message_kk=f"№{order.pk} тапсырыс: {st_kk}.")
 
         for username, sku, rating, comment in REVIEWS:
-            Review.objects.create(user=users[username], product=products[sku],
-                                  rating=rating, comment=comment)
+            purchase = (OrderItem.objects.filter(
+                order__user=users[username], product=products[sku],
+                order__status__in=("paid", "shipped", "delivered"),
+                order__payment__status="paid", review__isnull=True,
+            ).order_by("order__created_at", "pk").first())
+            if purchase is not None:
+                review = Review(user=users[username], product=products[sku],
+                                order_item=purchase, rating=rating, comment=comment)
+                review.full_clean()
+                review.save()
 
         create_promo_codes()
 

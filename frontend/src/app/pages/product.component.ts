@@ -1,9 +1,9 @@
-import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, Subscription } from 'rxjs';
 
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -85,15 +85,39 @@ import { StarsComponent } from '../shared/stars.component';
             </div>
 
             @if (auth.isLoggedIn()) {
-              @if (hasReviewed()) {
+              @if (eligibilityLoading() || !auth.user()) {
                 <aside class="panel write">
                   <h3>{{ i.t('product.writeReview') }}</h3>
-                  <p class="muted" role="status">{{ i.t(reviewOk() ? 'product.reviewSent' : 'product.alreadyReviewed') }}</p>
+                  <p class="muted" role="status">{{ i.t('common.loading') }}</p>
                 </aside>
-              } @else {
+              } @else if (eligibilityError()) {
+                <aside class="panel write">
+                  <h3>{{ i.t('product.writeReview') }}</h3>
+                  <p class="muted" role="alert">{{ i.t('product.reviewEligibilityError') }}</p>
+                  <button class="btn btn-outline" type="button" (click)="refreshProduct()">{{ i.t('settings.retry') }}</button>
+                </aside>
+              } @else if (eligibility()?.can_review) {
                 <form class="panel write" (ngSubmit)="sendReview(p.id)">
                   <h3>{{ i.t('product.writeReview') }}</h3>
-                  <fieldset [disabled]="reviewBusy() || !auth.user()" [attr.aria-busy]="reviewBusy()">
+                  @if (reviewOk()) { <p class="alert alert-ok" role="status">{{ i.t('product.reviewSent') }}</p> }
+                  <p class="muted review-rule">{{ i.t('product.reviewPerPurchase') }}</p>
+                  <fieldset [disabled]="reviewBusy()" [attr.aria-busy]="reviewBusy()">
+                    @if (eligibility(); as available) {
+                      @if (available.purchases.length > 1) {
+                        <div class="field">
+                          <label for="review-purchase">{{ i.t('product.reviewPurchase') }}</label>
+                          <select id="review-purchase" name="order_item_id" [ngModel]="selectedPurchase()" (ngModelChange)="choosePurchase($event)">
+                            @for (purchase of available.purchases; track purchase.order_item_id) {
+                              <option [ngValue]="purchase.order_item_id">{{ i.t('product.reviewOrder', { n: purchase.order_id }) }} · {{ purchase.purchased_at | date: 'mediumDate' }}</option>
+                            }
+                          </select>
+                        </div>
+                      } @else {
+                        @for (purchase of available.purchases; track purchase.order_item_id) {
+                          <p class="purchase-caption">{{ i.t('product.reviewOrder', { n: purchase.order_id }) }} · {{ purchase.purchased_at | date: 'mediumDate' }}</p>
+                        }
+                      }
+                    }
                     <label>{{ i.t('product.rating') }}</label>
                     <div class="rate" role="radiogroup" [attr.aria-label]="i.t('product.rating')">
                       @for (s of [1,2,3,4,5]; track s) {
@@ -105,13 +129,21 @@ import { StarsComponent } from '../shared/stars.component';
                       <textarea id="comment" name="comment" rows="3" [(ngModel)]="comment"></textarea>
                     </div>
                     @if (reviewMsg()) { <div class="alert alert-error" role="alert">{{ reviewMsg() }}</div> }
-                    <button class="btn btn-primary" type="submit">{{ i.t(reviewBusy() ? 'common.loading' : 'product.sendReview') }}</button>
+                    <button class="btn btn-primary" type="submit" [disabled]="!canReview()">{{ i.t(reviewBusy() ? 'common.loading' : 'product.sendReview') }}</button>
                   </fieldset>
                 </form>
+              } @else {
+                <aside class="panel write">
+                  <h3>{{ i.t('product.writeReview') }}</h3>
+                  @if (reviewOk()) { <p class="alert alert-ok" role="status">{{ i.t('product.reviewSent') }}</p> }
+                  <p class="muted" role="status">{{ i.t(eligibility()?.reason === 'review_exists' ? 'product.alreadyReviewed' : 'product.purchaseRequired') }}</p>
+                  <a routerLink="/orders">{{ i.t('orders.title') }}</a>
+                </aside>
               }
             } @else {
               <aside class="panel write">
                 <h3>{{ i.t('product.writeReview') }}</h3>
+                <p class="muted">{{ i.t('product.purchaseRequired') }}</p>
                 <a routerLink="/login" [queryParams]="{ returnUrl: '/product/' + p.id }">{{ i.t('product.loginToReview') }}</a>
               </aside>
             }
@@ -161,6 +193,9 @@ import { StarsComponent } from '../shared/stars.component';
     .write h3 { margin-bottom: 1rem; }
     .write fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
     .write fieldset:disabled { opacity: .65; }
+    .review-rule { font-size: .88rem; line-height: 1.5; }
+    .purchase-caption { margin-bottom: 1rem; font-weight: 600; font-size: .9rem; }
+    .write .alert { margin: 0 0 1rem; }
     .rate { display: flex; gap: 4px; margin-bottom: 1rem; }
     .rate button {
       font-size: 1.7rem; line-height: 1; border: 0; background: none; cursor: pointer; color: #d6e4ea; padding: 0 2px;
@@ -194,39 +229,69 @@ export class ProductComponent {
   readonly reviewMsg = signal('');
   readonly reviewOk = signal(false);
   readonly reviewBusy = signal(false);
-  private readonly duplicateReview = signal<string | null>(null);
-  readonly hasReviewed = computed(() => {
-    const user = this.auth.user();
-    const product = this.product();
-    return !!user && !!product && (
-      product.reviews.some(review => review.user_id === user.id)
-      || this.duplicateReview() === `${product.id}:${user.id}`
-    );
-  });
+  readonly eligibilityLoading = signal(false);
+  readonly eligibilityError = signal(false);
+  readonly selectedPurchase = signal<number | null>(null);
+  readonly eligibility = computed(() => this.product()?.review_eligibility ?? null);
+  readonly canReview = computed(() => !!this.auth.user() && !!this.eligibility()?.can_review
+    && !this.eligibilityLoading() && !this.eligibilityError() && !this.reviewBusy()
+    && this.selectedPurchase() !== null);
+  private readonly accountId = computed(() => this.auth.user()?.id ?? null);
+  private readonly context = computed(() => `${this.id()}:${this.auth.isLoggedIn() ? this.accountId() ?? 'restoring' : 'guest'}`);
+  private productRequest?: Subscription;
+  private reviewRequest?: Subscription;
 
   constructor() {
     effect(onCleanup => {
-      const id = Number(this.id());
-      this.product.set(null);
-      this.error.set(false);
-      const request = this.load(id);
-      onCleanup(() => request.unsubscribe());
-    });
-    effect(() => {
-      this.id();
-      this.auth.user()?.id;
-      this.comment = '';
-      this.rating.set(5);
-      this.reviewMsg.set('');
-      this.reviewOk.set(false);
-      this.duplicateReview.set(null);
+      const context = this.context();
+      untracked(() => {
+        this.product.set(null);
+        this.error.set(false);
+        this.comment = '';
+        this.rating.set(5);
+        this.reviewMsg.set('');
+        this.reviewOk.set(false);
+        this.selectedPurchase.set(null);
+        this.load(context, true);
+      });
+      onCleanup(() => {
+        this.productRequest?.unsubscribe();
+        this.reviewRequest?.unsubscribe();
+      });
     });
   }
 
-  load(id: number) {
-    return this.api.product(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: p => { if (Number(this.id()) === id) { this.product.set(p); this.qty.set(1); } },
-      error: () => { if (Number(this.id()) === id) this.error.set(true); },
+  refreshProduct() {
+    this.load(this.context());
+  }
+
+  choosePurchase(orderItemId: number) {
+    this.selectedPurchase.set(orderItemId);
+    this.reviewMsg.set('');
+  }
+
+  private load(context: string, resetQuantity = false) {
+    this.productRequest?.unsubscribe();
+    this.eligibilityLoading.set(true);
+    this.eligibilityError.set(false);
+    this.productRequest = this.api.product(Number(this.id())).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => { if (this.context() === context) this.eligibilityLoading.set(false); }),
+    ).subscribe({
+      next: p => {
+        if (this.context() !== context) return;
+        this.product.set(p);
+        if (resetQuantity) this.qty.set(1);
+        const purchases = p.review_eligibility?.purchases ?? [];
+        if (!purchases.some(purchase => purchase.order_item_id === this.selectedPurchase())) {
+          this.selectedPurchase.set(purchases[0]?.order_item_id ?? null);
+        }
+      },
+      error: () => {
+        if (this.context() !== context) return;
+        this.eligibilityError.set(true);
+        if (!this.product()) this.error.set(true);
+      },
     });
   }
 
@@ -244,34 +309,44 @@ export class ProductComponent {
   }
 
   sendReview(productId: number) {
-    const user = this.auth.user();
-    if (!user || this.reviewBusy() || this.hasReviewed() || this.product()?.id !== productId) return;
+    const orderItemId = this.selectedPurchase();
+    const context = this.context();
+    if (!this.canReview() || orderItemId === null || this.product()?.id !== productId
+      || !this.eligibility()?.purchases.some(purchase => purchase.order_item_id === orderItemId)) return;
     this.reviewBusy.set(true);
     this.reviewMsg.set('');
-    this.api.addReview(productId, this.rating(), this.comment).pipe(
+    this.reviewOk.set(false);
+    this.reviewRequest = this.api.addReview(productId, this.rating(), this.comment, orderItemId).pipe(
       takeUntilDestroyed(this.destroyRef),
       finalize(() => this.reviewBusy.set(false)),
     ).subscribe({
       next: review => {
-        // Show the saved review immediately, so the form cannot be submitted
-        // again while another request is loading updated product information.
+        if (this.context() !== context) return;
+        // Consume this purchase immediately while refreshing the authoritative
+        // eligibility, so an additional purchase can still receive a review.
         this.product.update(product => {
           if (!product || product.id !== productId) return product;
           const reviews = [...product.reviews.filter(item => item.id !== review.id), review];
+          const purchases = product.review_eligibility.purchases.filter(purchase => purchase.order_item_id !== orderItemId);
           return { ...product, reviews, review_count: reviews.length,
-            avg_rating: reviews.reduce((total, item) => total + item.rating, 0) / reviews.length };
+            avg_rating: reviews.reduce((total, item) => total + item.rating, 0) / reviews.length,
+            review_eligibility: { can_review: purchases.length > 0, remaining_purchases: purchases.length,
+              reason: purchases.length ? null : 'review_exists', purchases } };
         });
-        if (Number(this.id()) === productId && this.auth.user()?.id === user.id) {
-          this.reviewOk.set(true);
-          this.comment = '';
-        }
+        this.reviewOk.set(true);
+        this.comment = '';
+        this.rating.set(5);
+        this.load(context);
       },
       error: e => {
-        if (Number(this.id()) !== productId || this.auth.user()?.id !== user.id) return;
+        if (this.context() !== context) return;
         this.reviewOk.set(false);
-        if (e.error?.code === 'review_exists') {
-          this.duplicateReview.set(`${productId}:${user.id}`);
-          this.load(productId);
+        if (e.status === 401) {
+          this.auth.logout(false);
+          this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+        } else if (e.error?.code === 'review_exists' || e.error?.code === 'purchase_required') {
+          this.reviewMsg.set(this.i.t(e.error.code === 'review_exists' ? 'product.reviewPurchaseUsed' : 'product.purchaseRequired'));
+          this.load(context);
         } else {
           this.reviewMsg.set(e.error?.rating?.[0] ?? e.error?.comment?.[0] ?? this.i.t('common.error'));
         }

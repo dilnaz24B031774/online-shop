@@ -6,9 +6,10 @@ Idea: send BAD data -> the server must answer with a clean 4xx error, never a 50
 from decimal import Decimal
 
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from .models import Address, CartItem, Category, Order, Product, Review, User
+from .models import Address, CartItem, Category, Order, OrderItem, Payment, Product, Review, User
 
 
 class BaseApiTest(TestCase):
@@ -202,6 +203,12 @@ class ReviewTests(BaseApiTest):
         super().setUp()
         self.login()
         self.url = f"/api/products/{self.mouse.id}/reviews/"
+        for user in (self.user, self.other):
+            order = Order.objects.create(user=user, status=Order.Status.PAID,
+                                         shipping_address="Almaty", total_amount=self.mouse.price)
+            OrderItem.objects.create(order=order, product=self.mouse, quantity=1, unit_price=self.mouse.price)
+            Payment.objects.create(order=order, method=Payment.Method.CARD, amount=self.mouse.price,
+                                   status=Payment.Status.PAID, paid_at=timezone.now())
 
     def test_rating_boundaries(self):
         for value, expected in ((0, 400), (1, 201), (5, 201), (6, 400), (-1, 400), ("abc", 400), (None, 400)):

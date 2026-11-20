@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import re
+import smtplib
 from threading import Barrier
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
@@ -87,6 +88,52 @@ class PasswordResetTests(TestCase):
             with self.subTest(payload=payload):
                 self.assertEqual(self.api.post(REQUEST_URL, payload, format="json").status_code, 400)
         self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend")
+    def test_console_backend_does_not_claim_email_was_sent(self):
+        with patch("shop.password_reset.get_connection") as connect:
+            for email in (self.user.email, "missing@example.test"):
+                response = self.request_reset(email)
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.json()["code"], "email_not_configured")
+                self.assertEqual(response["Cache-Control"], "no-store")
+            connect.assert_not_called()
+        self.assertFalse(LoginSecurityState.objects.filter(scope__startswith="reset_").exists())
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST="smtp.gmail.com")
+    def test_missing_gmail_credentials_do_not_claim_email_was_sent(self):
+        for user, password in (("", ""), ("sender@gmail.com", ""), ("", "app-password")):
+            with self.settings(EMAIL_HOST_USER=user, EMAIL_HOST_PASSWORD=password), patch("shop.password_reset.get_connection") as connect:
+                response = self.request_reset()
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.json()["code"], "email_not_configured")
+                connect.assert_not_called()
+
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend", EMAIL_HOST="smtp.gmail.com",
+        EMAIL_HOST_USER="sender@gmail.com", EMAIL_HOST_PASSWORD="test-app-password",
+    )
+    def test_smtp_authentication_failure_is_reported_for_any_email(self):
+        with patch("shop.password_reset.get_connection") as connect, self.assertLogs("shop.password_reset", level="ERROR"):
+            connect.return_value.__enter__.side_effect = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+            responses = [self.request_reset(email) for email in (self.user.email, "missing@example.test")]
+        self.assertEqual([response.status_code for response in responses], [503, 503])
+        self.assertEqual(responses[0].json(), responses[1].json())
+        self.assertEqual(responses[0].json()["code"], "email_delivery_failed")
+
+    def test_send_failure_is_not_silently_reported_as_success(self):
+        with patch("shop.password_reset.EmailMultiAlternatives.send", return_value=0), self.assertLogs("shop.password_reset", level="ERROR"):
+            response = self.request_reset()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["code"], "email_delivery_failed")
+
+    def test_mailbox_specific_rejection_does_not_disclose_an_account(self):
+        refusal = smtplib.SMTPRecipientsRefused({self.user.email: (550, b"Mailbox unavailable")})
+        with patch("shop.password_reset.EmailMultiAlternatives.send", side_effect=refusal), self.assertLogs("shop.password_reset", level="ERROR"):
+            known = self.request_reset()
+        unknown = self.request_reset("missing@example.test")
+        self.assertEqual(known.status_code, unknown.status_code)
+        self.assertEqual(known.json(), unknown.json())
 
     def test_reset_hashes_password_revokes_old_tokens_and_consumes_all_reset_links(self):
         old_tokens = RefreshToken.for_user(self.user)

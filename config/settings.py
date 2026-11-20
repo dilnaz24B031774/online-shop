@@ -13,8 +13,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env", override=False, interpolate=False)
 
 
 # Quick-start development settings - unsuitable for production
@@ -175,8 +178,8 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
 CORS_EXPOSE_HEADERS = ["Retry-After"]
 
-# Local recovery emails appear in the backend terminal. Set EMAIL_HOST (or
-# EMAIL_BACKEND explicitly) and SMTP credentials to deliver real email.
+# SMTP settings can be supplied in .env or exported before starting Django.
+# Without EMAIL_HOST, the console backend only prints local recovery emails.
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:4200")
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", (
@@ -189,7 +192,8 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in ("true", "1", "yes")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false" if EMAIL_USE_SSL else "true").lower() in ("true", "1", "yes")
 EMAIL_TIMEOUT = 10
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Sauda <noreply@localhost>")
+DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
+                      or EMAIL_HOST_USER or "Sauda <noreply@localhost>")
 PASSWORD_RESET_TIMEOUT = 3600
 PASSWORD_RESET_RATE_WINDOW = 900
 PASSWORD_RESET_IP_LIMIT = 10
@@ -205,3 +209,8 @@ LOGIN_CHALLENGE_AFTER = 3
 LOGIN_IP_CHALLENGE_AFTER = 10
 LOGIN_CHALLENGE_TTL_SECONDS = 120
 CHALLENGE_MAX_ISSUED_PER_MINUTE = 20
+
+# Telegram recovery uses a dedicated bot. Keep its token only in private .env.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+TELEGRAM_REQUEST_TIMEOUT = 10

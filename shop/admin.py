@@ -280,12 +280,15 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ("product", "user", "rating", "comment", "created_at")
+    list_display = ("product", "user", "order_item", "rating", "comment", "created_at")
     list_filter = ("rating", "created_at")
     search_fields = ("user__username", "product__name_en", "product__name_ru", "comment")
-    list_select_related = ("user", "product")
+    list_select_related = ("user", "product", "order_item__order")
     readonly_fields = ("created_at",)
-    raw_id_fields = ("user", "product")
+    raw_id_fields = ("user", "product", "order_item")
+
+    def get_readonly_fields(self, request, obj=None):
+        return ("user", "product", "order_item", "created_at") if obj else ("created_at",)
 
 
 @admin.register(Notification)

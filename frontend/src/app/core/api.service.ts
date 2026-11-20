@@ -36,6 +36,23 @@ export interface LoginFailure {
   retry_after?: number;
 }
 
+export interface TelegramStatus {
+  configured: boolean;
+  linked: boolean;
+  username: string | null;
+  linked_at: string | null;
+}
+
+export interface TelegramLink {
+  link_url: string;
+  expires_in: number;
+}
+
+export interface TelegramResetChallenge {
+  challenge_id: string;
+  expires_in: number;
+}
+
 /** Every request to the backend goes through this service. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -66,8 +83,10 @@ export class ApiService {
     return this.http.get<ProductDetail>(`${API_URL}/products/${id}/`);
   }
 
-  addReview(productId: number, rating: number, comment: string): Observable<Review> {
-    return this.http.post<Review>(`${API_URL}/products/${productId}/reviews/`, { rating, comment });
+  addReview(productId: number, rating: number, comment: string, orderItemId?: number): Observable<Review> {
+    return this.http.post<Review>(`${API_URL}/products/${productId}/reviews/`, {
+      rating, comment, ...(orderItemId !== undefined ? { order_item_id: orderItemId } : {}),
+    });
   }
 
   search(q: string): Observable<SearchResult> {
@@ -85,6 +104,26 @@ export class ApiService {
 
   requestPasswordReset(email: string): Observable<{ detail: string }> {
     return this.http.post<{ detail: string }>(`${API_URL}/auth/password-reset/`, { email });
+  }
+
+  telegramStatus(): Observable<TelegramStatus> {
+    return this.http.get<TelegramStatus>(`${API_URL}/me/telegram/`);
+  }
+
+  linkTelegram(currentPassword: string): Observable<TelegramLink> {
+    return this.http.post<TelegramLink>(`${API_URL}/me/telegram/link/`, { current_password: currentPassword });
+  }
+
+  unlinkTelegram(currentPassword: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/me/telegram/unlink/`, { current_password: currentPassword });
+  }
+
+  requestTelegramPasswordReset(identifier: string): Observable<TelegramResetChallenge> {
+    return this.http.post<TelegramResetChallenge>(`${API_URL}/auth/telegram/password-reset/`, { identifier });
+  }
+
+  confirmTelegramPasswordReset(data: { challenge_id: string; code: string; new_password: string; new_password_confirm: string }): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/telegram/password-reset/confirm/`, data);
   }
 
   confirmPasswordReset(data: { uid: string; token: string; new_password: string; new_password_confirm: string }): Observable<{ detail: string }> {

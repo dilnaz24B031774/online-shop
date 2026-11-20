@@ -37,8 +37,22 @@ export interface Review {
   created_at: string;
 }
 
+export interface ReviewPurchase {
+  order_item_id: number;
+  order_id: number;
+  purchased_at: string;
+}
+
+export interface ReviewEligibility {
+  can_review: boolean;
+  remaining_purchases: number;
+  reason: 'login_required' | 'purchase_required' | 'review_exists' | null;
+  purchases: ReviewPurchase[];
+}
+
 export interface ProductDetail extends Product {
   reviews: Review[];
+  review_eligibility: ReviewEligibility;
 }
 
 export interface User {

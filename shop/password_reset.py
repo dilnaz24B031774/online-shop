@@ -1,13 +1,17 @@
 """Email recovery using Django's expiring, password-bound reset tokens."""
 from datetime import timedelta
+import logging
 import math
+import smtplib
 
 from django.conf import settings
 from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.db import transaction
+from django.template import loader
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
 from django.utils.http import urlsafe_base64_decode
@@ -17,6 +21,42 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from .models import LoginSecurityState, User
+
+logger = logging.getLogger(__name__)
+
+
+def email_delivery_configured():
+    backend = settings.EMAIL_BACKEND
+    if backend in (
+        "django.core.mail.backends.console.EmailBackend",
+        "django.core.mail.backends.filebased.EmailBackend",
+        "django.core.mail.backends.dummy.EmailBackend",
+    ):
+        return False
+    if backend == "django.core.mail.backends.smtp.EmailBackend":
+        if not settings.EMAIL_HOST:
+            return False
+        if settings.EMAIL_HOST.lower() == "smtp.gmail.com":
+            return bool(settings.EMAIL_HOST_USER.strip() and settings.EMAIL_HOST_PASSWORD.strip())
+    return True
+
+
+class DeliveryCheckedResetForm(PasswordResetForm):
+    """Reuse the verified transport and let delivery failures reach the caller."""
+
+    def __init__(self, *args, connection, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.connection = connection
+
+    def send_mail(self, subject_template_name, email_template_name, context,
+                  from_email, to_email, html_email_template_name=None):
+        subject = "".join(loader.render_to_string(subject_template_name, context).splitlines())
+        body = loader.render_to_string(email_template_name, context)
+        message = EmailMultiAlternatives(subject, body, from_email, [to_email], connection=self.connection)
+        if html_email_template_name:
+            message.attach_alternative(loader.render_to_string(html_email_template_name, context), "text/html")
+        if message.send() != 1:
+            raise smtplib.SMTPException("Password recovery email was not accepted.")
 
 
 class ResetRequestSerializer(serializers.Serializer):
@@ -84,27 +124,45 @@ def request_reset(request):
     serializer = ResetRequestSerializer(data=request.data)
     if not serializer.is_valid():
         return _response(serializer.errors, status=400)
+    if not email_delivery_configured():
+        return _response({
+            "code": "email_not_configured",
+            "detail": "Email sending is currently unavailable. Please try again later.",
+        }, status=503)
     email = serializer.validated_data["email"]
     retry_after = _rate_limit(request, email)
     if retry_after:
         return _limited(retry_after)
 
-    form = PasswordResetForm({"email": email})
-    if not form.is_valid():
-        return _response(dict(form.errors), status=400)
     # Never construct recovery links from the caller's Host or Origin header.
-    # PasswordResetForm excludes inactive accounts and unusable passwords, and
-    # logs delivery errors without disclosing account existence in the API.
-    form.save(
-        domain_override="Sauda",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        subject_template_name="shop/password_reset_subject.txt",
-        email_template_name="shop/password_reset_email.txt",
-        extra_email_context={
-            "frontend_url": settings.FRONTEND_URL.rstrip("/"),
-            "expires_minutes": math.ceil(settings.PASSWORD_RESET_TIMEOUT / 60),
-        },
-    )
+    # Open/authenticate even for unknown accounts: an unavailable SMTP service
+    # must return the same error without revealing whether an email exists.
+    try:
+        with get_connection(fail_silently=False) as connection:
+            form = DeliveryCheckedResetForm({"email": email}, connection=connection)
+            if not form.is_valid():
+                return _response(dict(form.errors), status=400)
+            form.save(
+                domain_override="Sauda",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                subject_template_name="shop/password_reset_subject.txt",
+                email_template_name="shop/password_reset_email.txt",
+                extra_email_context={
+                    "frontend_url": settings.FRONTEND_URL.rstrip("/"),
+                    "expires_minutes": math.ceil(settings.PASSWORD_RESET_TIMEOUT / 60),
+                },
+            )
+    except smtplib.SMTPRecipientsRefused:
+        # A mailbox-specific rejection must not reveal that the submitted
+        # address belongs to an account. Keep its response identical to an
+        # unknown email; administrators can inspect the delivery error.
+        logger.exception("Password recovery email recipient was refused.")
+    except (smtplib.SMTPException, OSError, ValueError):
+        logger.exception("Password recovery email service failed.")
+        return _response({
+            "code": "email_delivery_failed",
+            "detail": "We could not send the email right now. Please try again later.",
+        }, status=503)
     return _response({"detail": "If an active account uses this email, a password reset link has been sent."})
 
 

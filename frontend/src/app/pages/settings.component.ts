@@ -8,13 +8,14 @@ import { AuthService } from '../core/auth.service';
 import { CURRENCIES, CurrencyCode } from '../core/currency.service';
 import { I18nService } from '../core/i18n.service';
 import { User } from '../core/models';
+import { TelegramLinkComponent } from '../shared/telegram-link.component';
 
 type Errors = Record<string, string>;
 type Profile = Pick<User, 'username' | 'first_name' | 'last_name' | 'phone'>;
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, TelegramLinkComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })

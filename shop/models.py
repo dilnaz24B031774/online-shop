@@ -6,6 +6,7 @@ Rules that protect data are written as database constraints,
 so they work even if somebody forgets to check them in the code.
 """
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Q
 from django.utils.translation import get_language
@@ -82,6 +83,43 @@ class User(AbstractUser):
                 condition=Q(preferred_currency__in=["USD", "KZT", "EUR", "RUB"]),
                 name="user_currency_valid",
             ),
+        ]
+
+
+# ---------------------------------------------------------------------
+# Telegram recovery: verified destinations and expiring one-use challenges.
+# ---------------------------------------------------------------------
+class TelegramAccount(models.Model):
+    """A recovery destination verified by a private message to our bot."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="telegram_account")
+    telegram_id = models.PositiveBigIntegerField(unique=True)
+    username = models.CharField(max_length=64, blank=True)
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "telegram_accounts"
+
+
+class TelegramChallenge(models.Model):
+    """Only HMACs are stored; raw link nonces and recovery codes are ephemeral."""
+
+    key = models.CharField(max_length=64, primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True,
+                             related_name="telegram_challenges")
+    purpose = models.CharField(max_length=8)
+    password_digest = models.CharField(max_length=64, blank=True)
+    code_digest = models.CharField(max_length=64, blank=True)
+    expires_at = models.DateTimeField(db_index=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "telegram_challenges"
+        constraints = [
+            models.CheckConstraint(condition=Q(purpose__in=["link", "reset"]), name="telegram_challenge_purpose"),
+            models.CheckConstraint(condition=Q(attempts__lte=5), name="telegram_challenge_attempts"),
         ]
 
 
@@ -342,11 +380,16 @@ class Payment(models.Model):
 
 
 # ---------------------------------------------------------------------
-# 9. REVIEW - one review per customer per product, rating 1..5
+# 9. REVIEW - one review per purchased order line, rating 1..5
 # ---------------------------------------------------------------------
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    # Null is reserved for historical reviews whose purchase cannot be proven.
+    # All new customer reviews are attached to an owned, paid purchase.
+    order_item = models.OneToOneField(
+        OrderItem, on_delete=models.PROTECT, related_name="review", null=True, blank=True,
+    )
     rating = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -354,9 +397,34 @@ class Review(models.Model):
     class Meta:
         db_table = "reviews"
         constraints = [
-            models.UniqueConstraint(fields=["user", "product"], name="review_one_per_user_product"),
             models.CheckConstraint(condition=Q(rating__gte=1, rating__lte=5), name="review_rating_1_to_5"),
         ]
+
+    def clean(self):
+        super().clean()
+        previous = type(self).objects.filter(pk=self.pk).first() if self.pk else None
+        if previous and (previous.user_id, previous.product_id, previous.order_item_id) != (
+            self.user_id, self.product_id, self.order_item_id,
+        ):
+            raise ValidationError("A published review's author, product and purchase cannot be changed.")
+        if not self.order_item_id:
+            if previous is None:
+                raise ValidationError({"order_item": "Choose a paid purchase for this review."})
+            return
+        item = self.order_item
+        errors = {}
+        if item.order.user_id != self.user_id:
+            errors["user"] = "This purchase belongs to another customer."
+        if item.product_id != self.product_id:
+            errors["product"] = "Choose the product from this purchase."
+        # A later refund must not prevent moderation of an existing review.
+        if previous is None and (
+            item.order.status not in (Order.Status.PAID, Order.Status.SHIPPED, Order.Status.DELIVERED)
+            or not Payment.objects.filter(order_id=item.order_id, status=Payment.Status.PAID).exists()
+        ):
+            errors["order_item"] = "Reviews are available only after a paid purchase."
+        if errors:
+            raise ValidationError(errors)
 
 
 # ---------------------------------------------------------------------

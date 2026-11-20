@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from . import services
-from .models import Address, CartItem, Category, Order, Product, PromoCode, Review, User
+from .models import Address, CartItem, Category, Order, OrderItem, Payment, Product, PromoCode, Review, User
 
 TEST_CARD = {"number": "4242 4242 4242 4242", "holder": "AIGERIM K", "exp_month": 12, "exp_year": 2030, "cvc": "123"}
 
@@ -92,8 +92,11 @@ class FilterTests(PromoFilterBase):
 
     def test_rating_filter_and_sort(self):
         other = User.objects.create_user("dana", "d@ex.com", "Shop2026!")
-        Review.objects.create(user=self.user, product=self.lamp, rating=5)
-        Review.objects.create(user=other, product=self.mouse, rating=3)
+        for user, product, rating in ((self.user, self.lamp, 5), (other, self.mouse, 3)):
+            order = Order.objects.create(user=user, status="paid", total_amount=product.price, shipping_address="Almaty")
+            purchase = OrderItem.objects.create(order=order, product=product, quantity=1, unit_price=product.price)
+            Payment.objects.create(order=order, method="card", amount=product.price, status="paid", paid_at=timezone.now())
+            Review.objects.create(user=user, product=product, order_item=purchase, rating=rating)
         self.assertEqual(self.ids("?min_rating=4"), ["L1"])
         self.assertEqual(self.ids("?sort=rating")[:2], ["L1", "M1"])
 
