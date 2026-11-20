@@ -83,6 +83,14 @@ export class ApiService {
     return this.http.get<LoginChallenge>(`${API_URL}/auth/challenge/`, { params: { purpose: 'login' } });
   }
 
+  requestPasswordReset(email: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/password-reset/`, { email });
+  }
+
+  confirmPasswordReset(data: { uid: string; token: string; new_password: string; new_password_confirm: string }): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/password-reset/confirm/`, data);
+  }
+
   register(data: { username: string; email: string; password: string; first_name?: string }) {
     return this.http.post<{ user: User } & Tokens>(`${API_URL}/auth/register/`, data);
   }

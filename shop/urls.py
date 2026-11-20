@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import api, auth_views, complaints_api
+from . import api, auth_views, complaints_api, password_reset
 
 urlpatterns = [
     # catalogue (open for everyone)
@@ -18,6 +18,8 @@ urlpatterns = [
     path("auth/register/", api.register),
     path("auth/login/", auth_views.login),
     path("auth/challenge/", auth_views.challenge),
+    path("auth/password-reset/", password_reset.request_reset),
+    path("auth/password-reset/confirm/", password_reset.confirm_reset),
     path("auth/refresh/", TokenRefreshView.as_view()),      # {refresh} -> new access token
     path("me/", api.me),
     path("me/password/", api.change_password),

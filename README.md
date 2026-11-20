@@ -88,6 +88,7 @@ Password for all: `Shop2026!`
 - **Promo codes** with a percent, minimum order, dates and a usage limit
 - Cancel an order: stock comes back, payment becomes refunded, promo code use comes back
 - Reviews with rating 1–5
+- Password recovery by a single-use email link, valid for one hour
 - **Notifications** (bell in the header): order paid / shipped / cancelled, Black Friday
 - Shop assistant chat (works without internet)
 - Staff panel `/staff/`: dashboard, products, categories, orders, users
@@ -99,6 +100,35 @@ password and confirmation; other sessions are signed out while the current sessi
 receives new tokens. Currency selection applies to the catalogue, cart and orders.
 Amounts are stored in USD; this study project uses fixed demonstration rates for
 display (1 USD = 500 KZT / 0.92 EUR / 90 RUB), rather than live exchange rates.
+
+## Password recovery
+
+Choose **Forgot password?** on `/login` and enter the email used for the account.
+Open the emailed link, enter a new password twice, then sign in again. Links expire
+after one hour and stop working after a successful reset. Resetting a password
+also signs out existing sessions. The response is the same for registered and
+unknown emails; requests are limited per source and email address.
+
+Locally, recovery emails appear in the **backend terminal**. To deliver email,
+configure SMTP before starting Django:
+
+```bash
+export FRONTEND_URL=http://localhost:4200
+export EMAIL_HOST=smtp.example.com
+export EMAIL_PORT=587
+export EMAIL_HOST_USER=your_smtp_username
+export EMAIL_HOST_PASSWORD=your_smtp_password
+export DEFAULT_FROM_EMAIL='Sauda <noreply@example.com>'
+```
+
+TLS is enabled by default for port 587. For implicit TLS on port 465, set
+`EMAIL_PORT=465` and `EMAIL_USE_SSL=true`; this disables STARTTLS by default.
+`EMAIL_BACKEND` can override the automatic SMTP/console selection.
+Use the website's public HTTPS address for `FRONTEND_URL` when hosting the shop.
+
+Each account can publish **one review per product**. Once published, the form
+shows that the review is already submitted. Both the API and the database reject
+duplicates, including simultaneous submissions from different tabs.
 
 ## Database
 
@@ -149,6 +179,8 @@ Or in Django admin: Users → select users → action "Send Black Friday notific
 | GET | `/api/products/filters/` (brands and price range) | – |
 | GET | `/api/products/{id}/`, `/api/categories/`, `/api/search/?q=` | – |
 | POST | `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/` | – |
+| POST | `/api/auth/password-reset/` `{email}` | – |
+| POST | `/api/auth/password-reset/confirm/` `{uid, token, new_password, new_password_confirm}` | – |
 | GET/PATCH | `/api/me/` (profile and preferences) | ✔ |
 | POST | `/api/me/password/` `{current_password, new_password, new_password_confirm}` | ✔ |
 | GET/POST | `/api/complaints/` (own complaints only) | ✔ |

@@ -37,11 +37,12 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    user_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Review
-        fields = ["id", "username", "rating", "comment", "created_at"]
-        read_only_fields = ["id", "username", "created_at"]
+        fields = ["id", "user_id", "username", "rating", "comment", "created_at"]
+        read_only_fields = ["id", "user_id", "username", "created_at"]
 
     def validate_rating(self, value):
         if not 1 <= value <= 5:

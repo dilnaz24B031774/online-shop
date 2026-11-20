@@ -8,6 +8,8 @@ export const routes: Routes = [
   { path: 'product/:id', loadComponent: () => import('./pages/product.component').then(m => m.ProductComponent) },
   { path: 'search', loadComponent: () => import('./pages/search.component').then(m => m.SearchComponent) },
   { path: 'login', loadComponent: () => import('./pages/login.component').then(m => m.LoginComponent) },
+  { path: 'forgot-password', loadComponent: () => import('./pages/forgot-password.component').then(m => m.ForgotPasswordComponent) },
+  { path: 'reset-password', loadComponent: () => import('./pages/reset-password.component').then(m => m.ResetPasswordComponent) },
   { path: 'register', loadComponent: () => import('./pages/register.component').then(m => m.RegisterComponent) },
   { path: 'cart', canActivate: [authGuard], loadComponent: () => import('./pages/cart.component').then(m => m.CartComponent) },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },

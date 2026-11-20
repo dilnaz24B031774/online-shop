@@ -175,6 +175,27 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
 CORS_EXPOSE_HEADERS = ["Retry-After"]
 
+# Local recovery emails appear in the backend terminal. Set EMAIL_HOST (or
+# EMAIL_BACKEND explicitly) and SMTP credentials to deliver real email.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:4200")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+))
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in ("true", "1", "yes")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false" if EMAIL_USE_SSL else "true").lower() in ("true", "1", "yes")
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Sauda <noreply@localhost>")
+PASSWORD_RESET_TIMEOUT = 3600
+PASSWORD_RESET_RATE_WINDOW = 900
+PASSWORD_RESET_IP_LIMIT = 10
+PASSWORD_RESET_EMAIL_LIMIT = 3
+PASSWORD_RESET_CONFIRM_LIMIT = 20
+
 # Shared by the storefront login and the employee/admin login.
 LOGIN_MAX_FAILURES = 5
 LOGIN_FAILURE_WINDOW_SECONDS = 300

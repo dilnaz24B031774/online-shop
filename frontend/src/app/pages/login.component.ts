@@ -47,6 +47,7 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
                 {{ i.t(showPassword() ? 'auth.hide' : 'auth.show') }}
               </button>
             </div>
+            <a class="forgot-password" routerLink="/forgot-password" [queryParams]="{ returnUrl: safeReturnUrl() }">{{ i.t('reset.forgot') }}</a>
           </div>
 
           <div class="website-field" aria-hidden="true">
@@ -99,6 +100,7 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
     .switch .btn:hover { background: var(--green-50); }
     .security-note { font-size: .82rem; border-top: 1px solid var(--line); padding-top: 1rem; margin-bottom: 0; }
     .password-field { position: relative; }
+    .forgot-password { display: inline-block; margin-top: .55rem; color: var(--green-700); font-size: .85rem; }
     .password-field input { padding-right: 6.7rem; }
     .password-toggle { position: absolute; right: .65rem; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--green-700); font: inherit; font-size: .78rem; cursor: pointer; padding: .35rem; }
     .password-toggle:focus-visible, .refresh-challenge:focus-visible { outline: 2px solid var(--green-700); outline-offset: 3px; }

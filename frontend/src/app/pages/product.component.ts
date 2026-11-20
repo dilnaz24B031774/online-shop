@@ -1,7 +1,9 @@
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -83,21 +85,35 @@ import { StarsComponent } from '../shared/stars.component';
             </div>
 
             @if (auth.isLoggedIn()) {
-              <form class="panel write" (ngSubmit)="sendReview(p.id)">
+              @if (hasReviewed()) {
+                <aside class="panel write">
+                  <h3>{{ i.t('product.writeReview') }}</h3>
+                  <p class="muted" role="status">{{ i.t(reviewOk() ? 'product.reviewSent' : 'product.alreadyReviewed') }}</p>
+                </aside>
+              } @else {
+                <form class="panel write" (ngSubmit)="sendReview(p.id)">
+                  <h3>{{ i.t('product.writeReview') }}</h3>
+                  <fieldset [disabled]="reviewBusy() || !auth.user()" [attr.aria-busy]="reviewBusy()">
+                    <label>{{ i.t('product.rating') }}</label>
+                    <div class="rate" role="radiogroup" [attr.aria-label]="i.t('product.rating')">
+                      @for (s of [1,2,3,4,5]; track s) {
+                        <button type="button" role="radio" [attr.aria-checked]="s === rating()" [class.on]="s <= rating()" (click)="rating.set(s)" [attr.aria-label]="s">★</button>
+                      }
+                    </div>
+                    <div class="field">
+                      <label for="comment">{{ i.t('product.comment') }}</label>
+                      <textarea id="comment" name="comment" rows="3" [(ngModel)]="comment"></textarea>
+                    </div>
+                    @if (reviewMsg()) { <div class="alert alert-error" role="alert">{{ reviewMsg() }}</div> }
+                    <button class="btn btn-primary" type="submit">{{ i.t(reviewBusy() ? 'common.loading' : 'product.sendReview') }}</button>
+                  </fieldset>
+                </form>
+              }
+            } @else {
+              <aside class="panel write">
                 <h3>{{ i.t('product.writeReview') }}</h3>
-                <label>{{ i.t('product.rating') }}</label>
-                <div class="rate" role="radiogroup">
-                  @for (s of [1,2,3,4,5]; track s) {
-                    <button type="button" [class.on]="s <= rating()" (click)="rating.set(s)" [attr.aria-label]="s">★</button>
-                  }
-                </div>
-                <div class="field">
-                  <label for="comment">{{ i.t('product.comment') }}</label>
-                  <textarea id="comment" name="comment" rows="3" [(ngModel)]="comment"></textarea>
-                </div>
-                @if (reviewMsg()) { <div class="alert" [class.alert-ok]="reviewOk()" [class.alert-error]="!reviewOk()">{{ reviewMsg() }}</div> }
-                <button class="btn btn-primary" type="submit">{{ i.t('product.sendReview') }}</button>
-              </form>
+                <a routerLink="/login" [queryParams]="{ returnUrl: '/product/' + p.id }">{{ i.t('product.loginToReview') }}</a>
+              </aside>
             }
           </div>
         </section>
@@ -143,6 +159,8 @@ import { StarsComponent } from '../shared/stars.component';
     .review p { margin: 0 0 .4rem; }
     .who { font-weight: 700; }
     .write h3 { margin-bottom: 1rem; }
+    .write fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .write fieldset:disabled { opacity: .65; }
     .rate { display: flex; gap: 4px; margin-bottom: 1rem; }
     .rate button {
       font-size: 1.7rem; line-height: 1; border: 0; background: none; cursor: pointer; color: #d6e4ea; padding: 0 2px;
@@ -161,6 +179,7 @@ export class ProductComponent {
   readonly cart = inject(CartService);
   private api = inject(ApiService);
   private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   readonly id = input.required<string>();   // from /product/:id
 
@@ -174,15 +193,40 @@ export class ProductComponent {
   comment = '';
   readonly reviewMsg = signal('');
   readonly reviewOk = signal(false);
+  readonly reviewBusy = signal(false);
+  private readonly duplicateReview = signal<string | null>(null);
+  readonly hasReviewed = computed(() => {
+    const user = this.auth.user();
+    const product = this.product();
+    return !!user && !!product && (
+      product.reviews.some(review => review.user_id === user.id)
+      || this.duplicateReview() === `${product.id}:${user.id}`
+    );
+  });
 
   constructor() {
-    effect(() => this.load(Number(this.id())));
+    effect(onCleanup => {
+      const id = Number(this.id());
+      this.product.set(null);
+      this.error.set(false);
+      const request = this.load(id);
+      onCleanup(() => request.unsubscribe());
+    });
+    effect(() => {
+      this.id();
+      this.auth.user()?.id;
+      this.comment = '';
+      this.rating.set(5);
+      this.reviewMsg.set('');
+      this.reviewOk.set(false);
+      this.duplicateReview.set(null);
+    });
   }
 
   load(id: number) {
-    this.api.product(id).subscribe({
-      next: p => { this.product.set(p); this.qty.set(1); },
-      error: () => this.error.set(true),
+    return this.api.product(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: p => { if (Number(this.id()) === id) { this.product.set(p); this.qty.set(1); } },
+      error: () => { if (Number(this.id()) === id) this.error.set(true); },
     });
   }
 
@@ -200,16 +244,37 @@ export class ProductComponent {
   }
 
   sendReview(productId: number) {
-    this.api.addReview(productId, this.rating(), this.comment).subscribe({
-      next: () => {
-        this.reviewOk.set(true);
-        this.reviewMsg.set(this.i.t('product.reviewSent'));
-        this.comment = '';
-        this.load(productId);
+    const user = this.auth.user();
+    if (!user || this.reviewBusy() || this.hasReviewed() || this.product()?.id !== productId) return;
+    this.reviewBusy.set(true);
+    this.reviewMsg.set('');
+    this.api.addReview(productId, this.rating(), this.comment).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.reviewBusy.set(false)),
+    ).subscribe({
+      next: review => {
+        // Show the saved review immediately, so the form cannot be submitted
+        // again while another request is loading updated product information.
+        this.product.update(product => {
+          if (!product || product.id !== productId) return product;
+          const reviews = [...product.reviews.filter(item => item.id !== review.id), review];
+          return { ...product, reviews, review_count: reviews.length,
+            avg_rating: reviews.reduce((total, item) => total + item.rating, 0) / reviews.length };
+        });
+        if (Number(this.id()) === productId && this.auth.user()?.id === user.id) {
+          this.reviewOk.set(true);
+          this.comment = '';
+        }
       },
       error: e => {
+        if (Number(this.id()) !== productId || this.auth.user()?.id !== user.id) return;
         this.reviewOk.set(false);
-        this.reviewMsg.set(e.error?.detail ?? e.error?.rating?.[0] ?? this.i.t('common.error'));
+        if (e.error?.code === 'review_exists') {
+          this.duplicateReview.set(`${productId}:${user.id}`);
+          this.load(productId);
+        } else {
+          this.reviewMsg.set(e.error?.rating?.[0] ?? e.error?.comment?.[0] ?? this.i.t('common.error'));
+        }
       },
     });
   }

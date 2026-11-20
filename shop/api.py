@@ -5,7 +5,7 @@ Login uses JWT tokens: the frontend sends  Authorization: Bearer <access token>
 from django.core.exceptions import ValidationError as DjangoValidationError
 from decimal import Decimal, InvalidOperation
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count, Max, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -156,11 +156,20 @@ def search(request):
 @permission_classes([IsAuthenticated])
 def add_review(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
+    duplicate = {"code": "review_exists", "detail": "You have already reviewed this product."}
     if Review.objects.filter(user=request.user, product=product).exists():
-        return Response({"detail": "You have already reviewed this product."}, status=400)
+        return Response(duplicate, status=400)
     serializer = ReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    serializer.save(user=request.user, product=product)
+    try:
+        # The unique constraint also protects simultaneous submissions from
+        # different tabs. Roll back the failed insert before querying again.
+        with transaction.atomic():
+            serializer.save(user=request.user, product=product)
+    except IntegrityError:
+        if Review.objects.filter(user=request.user, product=product).exists():
+            return Response(duplicate, status=400)
+        raise
     return Response(serializer.data, status=201)
 
 

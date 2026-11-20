@@ -30,6 +30,7 @@ export interface Product {
 
 export interface Review {
   id: number;
+  user_id: number;
   username: string;
   rating: number;
   comment: string;
