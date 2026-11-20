@@ -298,7 +298,7 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
     .opt-text { display: flex; flex-direction: column; gap: .1rem; }
     .opt-text small { color: var(--ink-soft); font-size: .78rem; line-height: 1.3; }
     .months { display: flex; gap: .5rem; flex-wrap: wrap; margin: .7rem 0 .4rem; }
-    .months button { border: 1.5px solid var(--line); background: #fff; border-radius: 10px; padding: .45rem .9rem; cursor: pointer; font: inherit; color: var(--ink); }
+    .months button { border: 1.5px solid var(--line); background: var(--surface, #fff); border-radius: 10px; padding: .45rem .9rem; cursor: pointer; font: inherit; color: var(--ink); }
     .months button.on { border-color: var(--green-700); background: var(--green-700); color: #fff; }
     .monthly { margin: .4rem 0 0; }
     .qr-pay { display: flex; gap: 1.4rem; align-items: center; text-align: left; max-width: 520px; margin: 1rem auto 1.4rem;
@@ -337,7 +337,7 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
     .mini-card[data-brand="visa"] { background: linear-gradient(135deg, #1a3a8f, #0f2363); }
     .mini-card[data-brand="mastercard"] { background: linear-gradient(135deg, #3b2a22, #17110e); }
     .mini-card[data-brand="mir"] { background: linear-gradient(135deg, #1f8a4c, #0d5c34); }
-    .mini-card.plus { background: #fff; color: var(--green-700); border: 1.5px dashed #b9cfc5; font-size: 1.2rem; }
+    .mini-card.plus { background: var(--surface, #fff); color: var(--green-700); border: 1.5px dashed #b9cfc5; font-size: 1.2rem; }
     .saved-info { display: flex; flex-direction: column; min-width: 0; }
     .saved-info b { font-variant-numeric: tabular-nums; letter-spacing: .03em; }
     .saved-info small { color: var(--muted); font-size: .8rem; }

@@ -26,7 +26,7 @@ import { StockAlertsService } from '../core/stock-alerts.service';
     :host { display: block; margin-top: auto; }
     .notify {
       width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-      border: 1.5px solid var(--green-700); background: #fff; color: var(--green-700); cursor: pointer;
+      border: 1.5px solid var(--green-700); background: var(--surface, #fff); color: var(--green-700); cursor: pointer;
       font: 600 .84rem var(--font-body); padding: .55em .8em; border-radius: 10px; transition: background .15s, color .15s;
     }
     .notify:hover:not(:disabled) { background: var(--green-50); }

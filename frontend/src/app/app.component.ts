@@ -11,6 +11,7 @@ import { I18nService, LANGS } from './core/i18n.service';
 import { Category } from './core/models';
 import { AssistantComponent } from './shared/assistant.component';
 import { FavoritesService } from './core/favorites.service';
+import { ThemeService } from './core/theme.service';
 import { NotificationBellComponent } from './shared/notification-bell.component';
 
 @Component({
@@ -23,6 +24,7 @@ export class AppComponent implements OnInit {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
+  readonly theme = inject(ThemeService);   // created here, so the saved theme is applied on start
   private api = inject(ApiService);
   private router = inject(Router);
   /** /pay/... is the "bank app" on the phone: no shop header, footer or assistant there */

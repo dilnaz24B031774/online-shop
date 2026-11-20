@@ -14,7 +14,7 @@ type Kind = 'hits' | 'new' | 'trends';
   imports: [RouterLink, ProductCardComponent],
   template: `
     <div class="container page">
-      <header class="head">
+      <header class="top-head">
         <div>
           <p class="eyebrow">Sauda</p>
           <h1>{{ i.t('tp.title') }}</h1>
@@ -88,7 +88,7 @@ type Kind = 'hits' | 'new' | 'trends';
     </div>
   `,
   styles: [`
-    .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.2rem 2rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .top-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.2rem 2rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
     .eyebrow { margin: 0 0 .25rem; color: var(--green-700); font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; }
     h1 { margin: 0; }
     .lead { margin: .35rem 0 0; color: var(--muted); max-width: 52ch; }
@@ -98,7 +98,7 @@ type Kind = 'hits' | 'new' | 'trends';
       font: 600 .92rem var(--font-body); color: var(--muted); padding: .6em 1.05em; border-radius: 10px; transition: background .15s, color .15s;
     }
     .tabs button:hover { color: var(--green-900); }
-    .tabs button.on { background: #fff; color: var(--green-900); box-shadow: 0 2px 8px -3px rgba(14, 59, 46, .3); }
+    .tabs button.on { background: var(--surface, #fff); color: var(--text); box-shadow: 0 2px 8px -3px rgba(14, 59, 46, .3); }
     .tabs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
     .tabs button.on svg { stroke: var(--amber); }
 
@@ -108,7 +108,7 @@ type Kind = 'hits' | 'new' | 'trends';
     .how svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--green-700); stroke-width: 1.8; stroke-linecap: round; }
     .periods { display: flex; gap: 6px; flex-wrap: wrap; }
     .periods button {
-      border: 1.5px solid var(--line); background: #fff; color: var(--text); cursor: pointer;
+      border: 1.5px solid var(--line); background: var(--surface, #fff); color: var(--text); cursor: pointer;
       font: 600 .84rem var(--font-body); padding: .4em .9em; border-radius: 999px;
     }
     .periods button:hover { border-color: var(--green-700); }
@@ -119,7 +119,7 @@ type Kind = 'hits' | 'new' | 'trends';
     .item app-product-card { flex: 1; height: auto; }
     .metric {
       display: flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
-      background: var(--soft); color: var(--green-900); font-weight: 600; font-size: .84rem; padding: .5em .6em; text-align: center;
+      background: var(--soft); color: var(--text); font-weight: 600; font-size: .84rem; padding: .5em .6em; text-align: center;
     }
     .metric.up { background: #e7f5ec; color: #1f7a4a; }
     .metric svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

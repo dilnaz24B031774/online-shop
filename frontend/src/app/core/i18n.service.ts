@@ -356,6 +356,11 @@ const EN: Dict = {
   'profile.noFavorites': 'No favorites yet. Tap the heart on any product to save it here.',
   'profile.addresses': 'My addresses',
   'profile.noAddresses': 'No saved addresses. You can add one at checkout.',
+  'profile.tabProfile': 'Profile',
+  'product.share': 'Share on WhatsApp',
+  'theme.light': 'Light theme',
+  'theme.dark': 'Dark theme',
+
 };
 
 const RU: Dict = {
@@ -704,6 +709,11 @@ const RU: Dict = {
   'profile.noFavorites': 'Пока ничего нет. Нажмите на сердечко у товара, чтобы сохранить его здесь.',
   'profile.addresses': 'Мои адреса',
   'profile.noAddresses': 'Сохранённых адресов нет. Их можно добавить при оформлении заказа.',
+  'profile.tabProfile': 'Профиль',
+  'product.share': 'Поделиться в WhatsApp',
+  'theme.light': 'Светлая тема',
+  'theme.dark': 'Тёмная тема',
+
 };
 
 const KK: Dict = {
@@ -1053,6 +1063,10 @@ const KK: Dict = {
   'profile.noFavorites': 'Әзірге ештеңе жоқ. Мұнда сақтау үшін тауардағы жүрекшені басыңыз.',
   'profile.addresses': 'Менің мекенжайларым',
   'profile.noAddresses': 'Сақталған мекенжай жоқ. Оны тапсырыс беру кезінде қосуға болады.',
+   'profile.tabProfile': 'Профиль',
+  'product.share': 'WhatsApp-қа бөлісу',
+  'theme.light': 'Ашық тема',
+  'theme.dark': 'Қараңғы тема',
 };
 
 const DICTS: Record<Lang, Dict> = { en: EN, ru: RU, kk: KK };

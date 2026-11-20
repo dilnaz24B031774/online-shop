@@ -8,12 +8,17 @@ import { Order } from '../core/models';
 import { CountdownComponent } from '../shared/countdown.component';
 import { PayLinkService } from '../core/pay-link.service';
 
+/**
+ * The list of the user's orders.
+ * It is no longer a separate page: it is shown inside the profile (tab "My orders"),
+ * see profile.component.ts  ->  <app-orders />
+ */
 @Component({
   selector: 'app-orders',
   imports: [RouterLink, DatePipe, CountdownComponent],
   template: `
-    <div class="container page">
-      <h1>{{ i.t('orders.title') }}</h1>
+    <section class="wrap">
+      <h2 class="page-title">{{ i.t('orders.title') }}</h2>
       @if (message()) { <div class="alert alert-ok">{{ message() }}</div> }
       @if (failMsg()) { <div class="alert alert-error">{{ failMsg() }}</div> }
 
@@ -22,7 +27,7 @@ import { PayLinkService } from '../core/pay-link.service';
           <article class="order panel">
             <header>
               <div>
-                <h2>{{ i.t('orders.order') }} #{{ o.id }}</h2>
+                <h3>{{ i.t('orders.order') }} #{{ o.id }}</h3>
                 <span class="muted">{{ o.created_at | date: 'medium' }} · {{ o.shipping_address }}</span>
               </div>
               @if (isExpired(o)) {
@@ -123,9 +128,10 @@ import { PayLinkService } from '../core/pay-link.service';
       } @else {
         <p class="muted">{{ i.t('common.loading') }}</p>
       }
-    </div>
+    </section>
   `,
   styles: [`
+    .page-title { font-size: 1.5rem; margin-bottom: 1rem; }
     .s-expired { background: #f3eceb; color: #9a4a42; }
     .it-name { display: flex; flex-direction: column; min-width: 0; }
     .returned { color: #466b9b; font-size: .78rem; font-weight: 600; }
@@ -150,7 +156,7 @@ import { PayLinkService } from '../core/pay-link.service';
     .p-failed { background: #fbecea; color: #aa4942; } .p-refunded { background: #e8eff9; color: #466b9b; }
     .order { margin-bottom: 1.2rem; }
     header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
-    h2 { font-size: 1.25rem; margin-bottom: .2rem; }
+    h3 { font-size: 1.25rem; margin-bottom: .2rem; }
     .status { font-weight: 700; font-size: .85rem; padding: .35em .9em; border-radius: 999px; white-space: nowrap; }
     .s-pending { background: #fdf0d5; color: var(--warn); }
     .s-paid { background: #dff1f3; color: var(--teal-dark); }

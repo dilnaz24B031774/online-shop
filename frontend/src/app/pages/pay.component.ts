@@ -98,7 +98,7 @@ import { CountdownComponent } from '../shared/countdown.component';
     .logo { display: inline-flex; align-items: center; gap: .5rem; font: 800 1.2rem var(--font-head, var(--font-body)); }
     .logo svg { width: 26px; height: 26px; fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; }
     .tag { font-size: .72rem; font-weight: 700; background: rgba(255,255,255,.14); padding: .3em .7em; border-radius: 999px; }
-    .sheet { background: #fff; border-radius: 22px; padding: 24px 20px; box-shadow: 0 24px 50px -30px rgba(14,59,46,.55); }
+    .sheet { background: var(--surface, #fff); border-radius: 22px; padding: 24px 20px; box-shadow: 0 24px 50px -30px rgba(14,59,46,.55); }
     .to { margin: 0 0 .7rem; color: var(--muted); font-size: .86rem; }
     .merchant { display: flex; align-items: center; gap: .8rem; }
     .merchant div { display: flex; flex-direction: column; }
@@ -130,7 +130,7 @@ import { CountdownComponent } from '../shared/countdown.component';
     .bank-foot span { display: inline-flex; align-items: center; gap: .35rem; }
     .bank-foot svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; }
     .langs { display: flex; gap: 4px; }
-    .langs button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: .3em .7em; font: 600 .78rem var(--font-body); cursor: pointer; color: var(--muted); }
+    .langs button { border: 1px solid var(--line); background: var(--surface, #fff); border-radius: 8px; padding: .3em .7em; font: 600 .78rem var(--font-body); cursor: pointer; color: var(--muted); }
     .langs button.on { background: var(--green-700); border-color: var(--green-700); color: #fff; }
   `],
 })
