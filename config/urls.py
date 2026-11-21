@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from shop import backup_views, complaints_staff, purchase_export, reports, staff
+from shop import backup_views, bonus, complaints_staff, purchase_export, reports, staff
 from shop.auth_forms import ProtectedAdminAuthenticationForm
 
 admin.site.index_template = "shop/admin_index.html"
@@ -43,6 +43,7 @@ urlpatterns = [
     path("staff/complaints/", admin.site.admin_view(complaints_staff.complaints), name="staff_complaints"),
     path("staff/complaints/<int:pk>/", admin.site.admin_view(complaints_staff.complaint_detail), name="staff_complaint_detail"),
     path("staff/reports/", admin.site.admin_view(reports.reports), name="staff_reports"),
+    path("staff/gifts/", admin.site.admin_view(bonus.staff_gifts), name="staff_gifts"),
     path("staff/backups/", admin.site.admin_view(backup_views.backup_list), name="staff_backups"),
     path("staff/backups/<str:name>/", admin.site.admin_view(backup_views.backup_download), name="staff_backup_download"),
     # full purchase export (must come before the generic "<kind>.csv" route)

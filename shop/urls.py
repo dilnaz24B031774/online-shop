@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import api, auth_views, complaints_api, password_reset, telegram_recovery, tracking
+from . import api, auth_views, bonus, complaints_api, password_reset, telegram_recovery, tracking
 
 urlpatterns = [
     # catalogue (open for everyone)
@@ -57,6 +57,9 @@ urlpatterns = [
     path("stock-alerts/", api.stock_alerts),
 
     # notifications (login required)
+    path("bonus/", bonus.bonus, name="bonus"),
+    path("bonus/feed/", bonus.bonus_feed, name="bonus_feed"),
+    path("bonus/claim/", bonus.bonus_claim, name="bonus_claim"),
     path("notifications/", api.notifications),
     path("notifications/read-all/", api.notifications_read_all),
     path("notifications/<int:pk>/read/", api.notification_read),

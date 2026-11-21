@@ -864,3 +864,53 @@ class Complaint(models.Model):
 
     def __str__(self):
         return f"#{self.pk} {self.subject}"
+
+
+# ---------- bonus programme: treat the mascots, collect merch ----------
+
+class BonusFeeding(models.Model):
+    """The customer gave earned treats (kurt / Nauryz kozhe) to one of the two mascots."""
+    class Character(models.TextChoices):
+        AISULU = "aisulu", "Айсұлу"
+        ALTAI = "altai", "Алтай"
+
+    class Treat(models.TextChoices):
+        KURT = "kurt", "Құрт"
+        KOZHE = "kozhe", "Наурыз көже"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bonus_feedings")
+    character = models.CharField(max_length=10, choices=Character.choices)
+    treat = models.CharField(max_length=10, choices=Treat.choices)
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bonus_feedings"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(character__in=["aisulu", "altai"]), name="bonus_character_valid"),
+            models.CheckConstraint(condition=Q(treat__in=["kurt", "kozhe"]), name="bonus_treat_valid"),
+            models.CheckConstraint(condition=Q(quantity__gte=1), name="bonus_quantity_positive"),
+        ]
+
+
+class GiftClaim(models.Model):
+    """A merch gift the customer unlocked and asked for; staff send it out."""
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Ждёт отправки"
+        SENT = "sent", "Отправлен"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gift_claims")
+    gift = models.CharField(max_length=40)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    address = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "gift_claims"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "gift"], name="gift_claim_once_per_user"),
+            models.CheckConstraint(condition=Q(status__in=["requested", "sent"]), name="gift_claim_status_valid"),
+        ]

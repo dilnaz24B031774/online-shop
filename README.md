@@ -104,6 +104,15 @@ python3 manage.py changepassword manager
 - **"Courier is nearby"** — the customer gets a notification once the courier is within 500 m.
 - **Help center** — `/support`: FAQ, quick contacts and requests to the shop team.
 - **Appearance** — `/settings`: light/dark theme and accent colour.
+- **Bonus programme** — `/bonus`: every full $10 of a paid order gives 1 kurt (1 point), every full $50 gives
+  1 bowl of Nauryz kozhe (5 points). Customers treat the mascots Aisulu and Altai; at 10 / 30 / 60 / 100 points
+  each mascot unlocks a merch gift. Staff send the gifts from *Staff → Gifts*. Refunds and cancellations take
+  unspent treats back. The rules and gift list live at the top of `shop/bonus.py`.
+  The mascots are the original artwork brought to life (breathing, blinking, eating kurt, drinking kozhe).
+  **Real 3D models:** make a model from `aisulu`/`altai` picture in an image-to-3D tool (for example Meshy or
+  Tripo: upload the picture, generate, use auto-rigging, export **.glb** with animations), then save it as
+  `frontend/public/bonus/models/aisulu.glb` / `altai.glb`. The site picks it up automatically; animations named
+  like `idle`, `wave`, `eat`, `drink`, `jump` are used for the matching moments.
 - **Purchase export** — *Reports → Export all purchases* (or the CSV/PDF buttons on *Orders*): every order
   with customer, items, payment, discount and refunds for a chosen period. Only administrators and staff
   who can see both orders and users can download it, because it contains personal data.

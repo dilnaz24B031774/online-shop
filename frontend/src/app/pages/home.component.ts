@@ -82,6 +82,20 @@ import { ProductImageComponent } from '../shared/product-image.component';
     </section>
 
     <!-- weekly best sellers on green -->
+    <!-- bonus programme teaser with the mascots -->
+    <section class="container">
+      <a class="bonus-teaser" routerLink="/bonus">
+        <img src="/bonus/aisulu.webp" alt="" class="mascot left" loading="lazy" />
+        <div class="teaser-text">
+          <span class="tag">{{ teaser().tag }}</span>
+          <h2>{{ teaser().title }}</h2>
+          <p>{{ teaser().text }}</p>
+          <span class="btn btn-sun">{{ teaser().cta }} →</span>
+        </div>
+        <img src="/bonus/altai.webp" alt="" class="mascot right" loading="lazy" />
+      </a>
+    </section>
+
     <section class="deals">
       <div class="container">
         <div class="deals-head">
@@ -147,6 +161,26 @@ import { ProductImageComponent } from '../shared/product-image.component';
   `,
   styles: [`
     section[hidden] { display: none !important; }
+
+    /* bonus programme teaser */
+    .bonus-teaser { position: relative; display: grid; grid-template-columns: 150px 1fr 150px; align-items: end; gap: 1.5rem;
+      margin-top: 2.4rem; padding: 1.6rem 2rem 0; border-radius: 22px; overflow: hidden; text-decoration: none !important; color: #fff;
+      background: linear-gradient(120deg, #123a6b 0%, #1c4f8c 60%, #245aa1 100%); }
+    .bonus-teaser::before { content: ''; position: absolute; inset: 0; opacity: .12; pointer-events: none;
+      background-image: radial-gradient(circle at 20px 20px, #f6c25b 2px, transparent 3px); background-size: 40px 40px; }
+    .bonus-teaser .mascot { position: relative; height: 210px; width: auto; justify-self: center; margin-bottom: -6px;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.3)); transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+    .bonus-teaser:hover .mascot.left { transform: translateY(-8px) rotate(-4deg); }
+    .bonus-teaser:hover .mascot.right { transform: translateY(-8px) rotate(4deg); }
+    .teaser-text { position: relative; align-self: center; padding-bottom: 1.6rem; text-align: center; }
+    .teaser-text .tag { background: #f6c25b; color: #123a6b; }
+    .teaser-text h2 { color: #fff; margin: .7rem 0 .4rem; font-size: clamp(1.3rem, 2.4vw, 1.9rem); }
+    .teaser-text p { color: #d9e5f5; margin: 0 auto 1rem; max-width: 52ch; }
+    @media (max-width: 720px) {
+      .bonus-teaser { grid-template-columns: 1fr 1fr; padding: 1.4rem 1.2rem 0; }
+      .teaser-text { grid-column: 1 / -1; grid-row: 1; padding-bottom: 0; }
+      .bonus-teaser .mascot { height: 160px; }
+    }
 
     /* welcome banner (shown when the seasonal products are not in the catalogue) */
     .welcome {
@@ -335,6 +369,18 @@ export class HomeComponent implements OnInit {
     const picked = this.products().filter(p => !seen.has(p.category.id) && seen.add(p.category.id));
     return (picked.length >= 3 ? picked : this.products()).slice(0, 3);
   });
+
+  readonly teaser = computed(() => ({
+    en: { tag: 'Bonus programme', title: 'Treat Aisulu and Altai — get Sauda merch',
+          text: 'Every paid order brings kurt and Nauryz kozhe. Feed our friends and collect stickers, mugs, caps and hoodies.',
+          cta: 'Open bonuses' },
+    ru: { tag: 'Бонусная программа', title: 'Угощайте Айсұлу и Алтая — получайте мерч Sauda',
+          text: 'За каждый оплаченный заказ — құрт и наурыз көже. Угощайте друзей и собирайте стикеры, кружки, кепки и худи.',
+          cta: 'К бонусам' },
+    kk: { tag: 'Бонустық бағдарлама', title: 'Айсұлу мен Алтайды сыйлаңыз — Sauda мерчін алыңыз',
+          text: 'Әр төленген тапсырыс үшін — құрт пен наурыз көже. Достарды сыйлап, стикер, кружка, кепка мен худи жинаңыз.',
+          cta: 'Бонустарға' },
+  }[this.i.lang()]));
 
   readonly hasSeasonHero = computed(() => ['FA-SUMDR', 'EL-AIRPD', 'SH-AJ1'].some(sku => this.bySku(sku)));
 

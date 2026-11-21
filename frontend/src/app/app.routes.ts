@@ -16,6 +16,7 @@ export const routes: Routes = [
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
   { path: 'orders/:id/tracking', canActivate: [authGuard], loadComponent: () => import('./pages/tracking.component').then(m => m.TrackingComponent) },
   { path: 'courier', loadComponent: () => import('./pages/courier.component').then(m => m.CourierComponent) },
+  { path: 'bonus', canActivate: [authGuard], loadComponent: () => import('./pages/bonus.component').then(m => m.BonusComponent) },
   { path: 'support', loadComponent: () => import('./pages/support.component').then(m => m.SupportComponent) },
   { path: 'pay/:token', loadComponent: () => import('./pages/pay.component').then(m => m.PayComponent) },
   { path: 'top', loadComponent: () => import('./pages/top.component').then(m => m.TopComponent) },

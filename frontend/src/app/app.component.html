@@ -96,6 +96,7 @@
         <a [routerLink]="['/catalog']" [queryParams]="{ category: c.id }">{{ i.pick(c) }}</a>
       }
       <span class="spacer"></span>
+      @if (auth.isLoggedIn()) { <a routerLink="/bonus" routerLinkActive="active" class="strong bonus-link">{{ i.lang() === 'ru' ? 'Бонусы' : i.lang() === 'kk' ? 'Бонустар' : 'Bonuses' }}</a> }
       <a routerLink="/support" routerLinkActive="active" class="strong">{{ i.lang() === 'ru' ? 'Поддержка' : i.lang() === 'kk' ? 'Қолдау' : 'Support' }}</a>
       <!-- "My orders" is not a separate tab anymore: it lives inside the profile -->
       @if (auth.isLoggedIn()) {
@@ -137,6 +138,7 @@
       <a routerLink="/cart">{{ i.t('nav.cart') }}</a>
       @if (auth.isLoggedIn()) { <a routerLink="/settings">{{ i.t('nav.settings') }}</a> }
       <a routerLink="/complaints">{{ i.t('nav.complaints') }}</a>
+      @if (auth.isLoggedIn()) { <a routerLink="/bonus">{{ i.lang() === 'ru' ? 'Бонусы и подарки' : i.lang() === 'kk' ? 'Бонустар мен сыйлықтар' : 'Bonuses & gifts' }}</a> }
       <a routerLink="/support">{{ i.lang() === 'ru' ? 'Помощь и поддержка' : i.lang() === 'kk' ? 'Көмек және қолдау' : 'Help & support' }}</a>
       <a routerLink="/login">{{ i.t('nav.login') }}</a>
       <a routerLink="/register">{{ i.t('auth.register') }}</a>
