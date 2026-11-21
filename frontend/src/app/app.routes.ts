@@ -14,6 +14,7 @@ export const routes: Routes = [
   { path: 'register', loadComponent: () => import('./pages/register.component').then(m => m.RegisterComponent) },
   { path: 'cart', canActivate: [authGuard], loadComponent: () => import('./pages/cart.component').then(m => m.CartComponent) },
   { path: 'checkout', canActivate: [authGuard], loadComponent: () => import('./pages/checkout.component').then(m => m.CheckoutComponent) },
+<<<<<<< HEAD
   { path: 'pay/:token', loadComponent: () => import('./pages/pay.component').then(m => m.PayComponent) },
   { path: 'top', loadComponent: () => import('./pages/top.component').then(m => m.TopComponent) },
   { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
@@ -21,5 +22,10 @@ export const routes: Routes = [
   { path: 'orders', redirectTo: () => inject(Router).parseUrl('/profile?tab=orders') },
   { path: 'settings', canActivate: [authGuard], loadComponent: () => import('./pages/settings.component').then(m => m.SettingsComponent) },
   { path: 'complaints', canActivate: [authGuard], loadComponent: () => import('./pages/complaints.component').then(m => m.ComplaintsComponent) },
+=======
+  { path: 'profile', canActivate: [authGuard], loadComponent: () => import('./pages/profile.component').then(m => m.ProfileComponent) },
+  // "My orders" is now a tab of the profile; old links to /orders still work
+  { path: 'orders', redirectTo: () => inject(Router).parseUrl('/profile?tab=orders') },
+>>>>>>> origin/dilyara-changes
   { path: '**', redirectTo: '' },
 ];

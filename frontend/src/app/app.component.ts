@@ -29,7 +29,10 @@ export class AppComponent implements OnInit {
   readonly region = inject(RegionService);
   readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);   // created here, so the saved theme is applied on start
+<<<<<<< HEAD
   readonly money = inject(CurrencyService);
+=======
+>>>>>>> origin/dilyara-changes
   private api = inject(ApiService);
   private router = inject(Router);
   /** /pay/... is the "bank app" on the phone: no shop header, footer or assistant there */
