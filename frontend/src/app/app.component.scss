@@ -76,8 +76,7 @@ main { flex: 1; }
 
 /* category navigation */
 .catnav { border-top: 1px solid var(--line); background: #fff; }
-.catnav-in { display: flex; align-items: center; gap: 1.6rem; height: 48px; overflow-x: auto; scrollbar-width: none;
-             -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+.catnav-in { display: flex; align-items: center; gap: 1.6rem; height: 48px; overflow-x: auto; scrollbar-width: none; }
 .catnav a { color: var(--text); font-weight: 500; font-size: .92rem; white-space: nowrap; text-decoration: none; padding: .4rem 0; }
 .catnav a:hover { color: var(--green-700); }
 .catnav .all {

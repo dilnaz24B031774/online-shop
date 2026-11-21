@@ -1,23 +1,23 @@
-/* =====================================================================
-   Theme switch (sun / moon) + dark theme.
-   Add ONE line to the end of src/styles.scss:   @import './theme.scss';
-   ===================================================================== */
+/* Appearance preferences are controlled in Settings and applied to <html>. */
 
-/* ---------- sun / moon buttons in the top bar ---------- */
 .tools { display: flex; align-items: center; gap: .7rem; }
-.themes {
-  display: flex; gap: 2px; padding-left: .7rem; border-left: 1px solid rgba(255, 255, 255, .22);
+html[data-theme='light'] { color-scheme: light; }
+html[data-accent='blue'] {
+  --green-900: #183a65;
+  --green-700: #245aa1;
+  --green-500: #3b73b8;
+  --green-50: #eaf1fb;
+  --teal: var(--green-700);
+  --teal-dark: var(--green-900);
 }
-.themes button {
-  border: 0; background: transparent; color: #d5e6de; width: 30px; height: 26px; padding: 0;
-  border-radius: 6px; cursor: pointer; display: grid; place-items: center;
+html[data-accent='violet'] {
+  --green-900: #3f285d;
+  --green-700: #7045a6;
+  --green-500: #8a60bb;
+  --green-50: #f2ecfa;
+  --teal: var(--green-700);
+  --teal-dark: var(--green-900);
 }
-.themes button svg {
-  width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2;
-  stroke-linecap: round; stroke-linejoin: round;
-}
-.themes button:not(.on):hover { background: rgba(255, 255, 255, .14); }
-.themes button.on { background: var(--amber); color: #0E3B2E; }
 
 /* ---------- dark theme ---------- */
 html[data-theme='dark'] {
@@ -33,13 +33,34 @@ html[data-theme='dark'] {
   --ink-soft: #9db3a8;
 
   --green-900: #0b2a20;   /* dark bars: top bar, footer, "best sellers" */
-  --green-700: #2b9672;   /* buttons, links */
+  --green-700: #78d6b3;   /* buttons, links */
+  --green-500: #99e3c6;
   --green-50: #1d3a2e;    /* light green tints */
+  --on-accent: #11271e;
   --sky: #24322c;
   --red: #ef6a5e;
   --berry: #ef7c93;
   --teal: #3fb6c4;
   --teal-dark: #6fd0db;
+}
+
+html[data-theme='dark'][data-accent='blue'] {
+  --green-900: #182f4b;
+  --green-700: #95c1ff;
+  --green-500: #b4d3ff;
+  --green-50: #21364e;
+  --teal: #95c1ff;
+  --teal-dark: #b4d3ff;
+  --on-accent: #12243c;
+}
+html[data-theme='dark'][data-accent='violet'] {
+  --green-900: #30223f;
+  --green-700: #c6acff;
+  --green-500: #d9c7ff;
+  --green-50: #3b2b50;
+  --teal: #c6acff;
+  --teal-dark: #d9c7ff;
+  --on-accent: #2b1845;
 }
 
 html[data-theme='dark'] body { background: var(--bg); color: var(--text); }
@@ -63,7 +84,10 @@ html[data-theme='dark'] .share-btn,
 html[data-theme='dark'] .link-btn,
 html[data-theme='dark'] .chips button { background: var(--surface); }
 
-html[data-theme='dark'] .msg.me { background: var(--green-700); }
+html[data-theme='dark'] .msg.me { background: var(--green-700); color: var(--on-accent); }
+html[data-theme='dark'] .btn-primary { color: var(--on-accent); }
+html[data-theme='dark'] .btn-primary:hover { background: var(--green-500); }
+html[data-theme='dark'] .btn-sun { color: #17201c; }
 html[data-theme='dark'] .add.done { background: var(--green-50); }
 html[data-theme='dark'] .add:hover { background: var(--green-700); }
 html[data-theme='dark'] .cart-icon .count { border-color: var(--surface); }

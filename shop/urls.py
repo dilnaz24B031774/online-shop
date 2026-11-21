@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-from . import api, auth_views, complaints_api, password_reset, telegram_recovery
+from . import api, auth_views, complaints_api, password_reset, telegram_recovery, tracking
 
 urlpatterns = [
     # catalogue (open for everyone)
@@ -41,6 +41,9 @@ urlpatterns = [
     path("cart/", api.cart),
     path("checkout/", api.checkout),
     path("orders/", api.my_orders),
+    path("orders/<int:pk>/tracking/", tracking.order_tracking, name="order_tracking"),
+    path("courier/session/", tracking.courier_session, name="courier_session"),
+    path("courier/location/", tracking.courier_location, name="courier_location"),
     path("orders/<int:pk>/cancel/", api.cancel_order),
     path("favorites/", api.favorites),
     path("favorites/<int:product_id>/", api.remove_favorite),

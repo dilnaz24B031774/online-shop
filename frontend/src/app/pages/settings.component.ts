@@ -5,9 +5,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '../core/auth.service';
+import { appearanceCopy } from '../core/appearance-copy';
 import { CURRENCIES, CurrencyCode } from '../core/currency.service';
-import { I18nService } from '../core/i18n.service';
+import { I18nService, LANGS, Lang } from '../core/i18n.service';
 import { User } from '../core/models';
+import { ACCENTS, Accent, Theme, ThemeService } from '../core/theme.service';
 import { TelegramLinkComponent } from '../shared/telegram-link.component';
 
 type Errors = Record<string, string>;
@@ -22,6 +24,11 @@ type Profile = Pick<User, 'username' | 'first_name' | 'last_name' | 'phone'>;
 export class SettingsComponent {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
+  readonly theme = inject(ThemeService);
+  readonly appearance = computed(() => appearanceCopy(this.i.lang()));
+  readonly accents = ACCENTS;
+  readonly languages = LANGS;
+  readonly appearanceSaved = signal(false);
   readonly currencies = CURRENCIES;
   readonly ready = signal(false);
   readonly initials = computed(() => {
@@ -62,8 +69,28 @@ export class SettingsComponent {
     });
   }
 
+  /** jump to a settings section from the side menu */
+  goTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   retry() {
     if (!this.auth.profileLoading()) this.auth.refreshProfile().subscribe({ error: () => {} });
+  }
+
+  chooseTheme(theme: Theme) {
+    this.theme.use(theme);
+    this.appearanceSaved.set(true);
+  }
+
+  chooseAccent(accent: Accent) {
+    this.theme.useAccent(accent);
+    this.appearanceSaved.set(true);
+  }
+
+  chooseLanguage(language: Lang) {
+    this.i.use(language);
+    this.appearanceSaved.set(true);
   }
 
   profileEdited(field: string) {

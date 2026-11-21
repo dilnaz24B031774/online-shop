@@ -255,3 +255,12 @@ REVIEW_PHOTO_MAX_MB = 5
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
 TELEGRAM_REQUEST_TIMEOUT = 10
+
+# Delivery address -> map coordinates through OpenStreetMap Nominatim (free, no key).
+# Nominatim asks every app to send its own name and a contact in the User-Agent.
+# Off while the test suite runs, so tests never call the internet.
+import sys as _sys
+NOMINATIM_ENABLED = (os.environ.get("NOMINATIM_ENABLED", "1").lower() in ("1", "true", "yes")
+                     and "test" not in _sys.argv[1:2])
+NOMINATIM_URL = os.environ.get("NOMINATIM_URL", "https://nominatim.openstreetmap.org/search")
+NOMINATIM_USER_AGENT = os.environ.get("NOMINATIM_USER_AGENT", "SaudaStudentShop/1.0")

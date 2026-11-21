@@ -1,0 +1,98 @@
+<div class="support-page">
+  <div class="container page">
+    <header class="support-hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span aria-hidden="true">✦</span> {{ copy().eyebrow }}</p>
+        <h1>{{ copy().title }}</h1>
+        <p class="hero-intro">{{ copy().intro }}</p>
+        <a class="btn btn-primary" href="#contact-support">{{ copy().contact }} <span aria-hidden="true">↗</span></a>
+      </div>
+      <div class="hero-note">
+        <span class="help-symbol" aria-hidden="true"><svg viewBox="0 0 80 80"><path d="M17 43v-6a23 23 0 0 1 46 0v6"/><rect x="12" y="37" width="13" height="23" rx="6"/><rect x="55" y="37" width="13" height="23" rx="6"/><path d="M61 60c0 9-8 12-18 12"/><rect x="34" y="67" width="12" height="7" rx="3"/></svg><span class="small-star">✦</span></span>
+        <p>{{ copy().replyNote }}</p>
+      </div>
+    </header>
+
+    <nav class="quick-help" [attr.aria-label]="copy().contact">
+      <a href="#contact-support" class="quick-card">
+        <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4V5Z"/><path d="M8 9h8M8 12h5"/></svg></span>
+        <span><strong>{{ quick().write[0] }}</strong><small>{{ quick().write[1] }}</small></span>
+      </a>
+      <a routerLink="/profile" [queryParams]="{ tab: 'orders' }" class="quick-card">
+        <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg></span>
+        <span><strong>{{ quick().track[0] }}</strong><small>{{ quick().track[1] }}</small></span>
+      </a>
+      <a href="tel:+77000000000" class="quick-card">
+        <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 3 3 5-2 2c2 3 3 4 6 6l2-2 5 3-1 4C10 22 2 14 3 4l4-1Z"/></svg></span>
+        <span><strong>{{ quick().call[0] }}</strong><small>{{ quick().call[1] }}</small></span>
+      </a>
+      <a href="mailto:hello@sauda.kz" class="quick-card">
+        <span class="quick-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+        <span><strong>{{ quick().mail[0] }}</strong><small>{{ quick().mail[1] }}</small></span>
+      </a>
+    </nav>
+    <p class="quick-hours"><span class="live-dot" aria-hidden="true"></span>{{ i.t('perk.support') }}</p>
+
+    <section class="faq-section" aria-labelledby="support-faq-title">
+      <div class="faq-heading"><h2 id="support-faq-title">{{ copy().faqTitle }}</h2><div class="help-search"><label class="sr-only" for="help-search">{{ copy().searchLabel }}</label><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><input id="help-search" type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" [placeholder]="copy().searchPlaceholder" /></div></div>
+      <div class="topic-tabs" role="group" [attr.aria-label]="copy().faqTitle">@for (option of topics; track option) { <button type="button" [class.active]="topic() === option" [attr.aria-pressed]="topic() === option" (click)="topic.set(option)">{{ copy().topics[option] }}</button> }</div>
+      <div class="faq-grid">
+        @for (faq of faqs(); track faq.question) {
+          <details class="faq-card"><summary>{{ faq.question }}<span class="faq-plus" aria-hidden="true">+</span></summary><p>{{ faq.answer }}</p></details>
+        } @empty {
+          <div class="faq-empty" role="status"><p>{{ copy().noResults }}</p><button type="button" class="text-button" (click)="clearSearch()">{{ copy().clear }}</button></div>
+        }
+      </div>
+    </section>
+
+    <section id="contact-support" class="contact-section" aria-labelledby="support-contact-title">
+      <div class="section-heading"><p class="eyebrow">{{ copy().eyebrow }}</p><h2 id="support-contact-title">{{ copy().contactTitle }}</h2><p class="muted">{{ copy().contactIntro }}</p></div>
+      @if (!auth.isLoggedIn()) {
+        <div class="guest-card panel"><span class="guest-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg></span><div><h3>{{ copy().guestTitle }}</h3><p>{{ copy().guestText }}</p></div><a class="btn btn-primary" routerLink="/login" [queryParams]="{ returnUrl: '/support' }">{{ copy().signIn }} <span aria-hidden="true">↗</span></a></div>
+      } @else {
+        <div class="support-layout">
+          <div class="panel compose">
+            <p class="privacy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg>{{ copy().privacy }}</p>
+            @if (sentId(); as id) { <div class="alert alert-ok" role="status" aria-live="polite">{{ i.t('complaints.sent', { n: id }) }}</div> }
+            <form (ngSubmit)="submit()" novalidate>
+              @if (errors()['form']) { <div class="alert alert-error" role="alert">{{ errors()['form'] }}</div> }
+              <fieldset [disabled]="busy()" [attr.aria-busy]="busy()">
+                <div class="field"><label for="support-subject">{{ i.t('complaints.subject') }} <span aria-hidden="true">*</span></label><input id="support-subject" name="subject" [(ngModel)]="form.subject" (ngModelChange)="edited('subject')" maxlength="150" required [placeholder]="i.t('complaints.subjectPlaceholder')" [attr.aria-invalid]="!!errors()['subject']" aria-describedby="support-subject-error"/><small class="field-error" id="support-subject-error" role="alert">{{ errors()['subject'] }}</small></div>
+                <div class="form-row">
+                  <div class="field"><label for="support-category">{{ i.t('complaints.category') }}</label><select id="support-category" name="category" [(ngModel)]="form.category" (ngModelChange)="edited('category')" [attr.aria-invalid]="!!errors()['category']" aria-describedby="support-category-error">@for (category of categories; track category) { <option [value]="category">{{ i.t('complaints.category.' + category) }}</option> }</select><small class="field-error" id="support-category-error" role="alert">{{ errors()['category'] }}</small></div>
+                  <div class="field"><label for="support-order">{{ i.t('complaints.order') }} <small>{{ i.t('complaints.optional') }}</small></label><select id="support-order" name="order" [(ngModel)]="form.order" (ngModelChange)="edited('order')" [disabled]="ordersLoading() || ordersError() || busy()" [attr.aria-invalid]="!!errors()['order']" aria-describedby="support-order-error"><option [ngValue]="null">{{ i.t(ordersLoading() ? 'common.loading' : 'complaints.noOrder') }}</option>@for (order of orders(); track order.id) { <option [ngValue]="order.id">#{{ order.id }} · {{ date(order.created_at) }}</option> }</select><small class="field-error" id="support-order-error" role="alert">{{ errors()['order'] }}</small></div>
+                </div>
+                @if (ordersError()) { <p class="order-note" role="status">{{ i.t('complaints.ordersError') }} <button class="text-button" type="button" (click)="loadOrders()">{{ i.t('complaints.retry') }}</button></p> }
+                <div class="field"><label for="support-message">{{ i.t('complaints.message') }} <span aria-hidden="true">*</span></label><textarea id="support-message" name="message" [(ngModel)]="form.message" (ngModelChange)="edited('message')" rows="6" minlength="10" maxlength="5000" required [placeholder]="i.t('complaints.messagePlaceholder')" [attr.aria-invalid]="!!errors()['message']" aria-describedby="support-message-hint support-message-error"></textarea><div class="message-meta"><small id="support-message-hint">{{ i.t('complaints.messageHint') }}</small><small aria-hidden="true">{{ form.message.length }} / 5000</small></div><small class="field-error" id="support-message-error" role="alert">{{ errors()['message'] }}</small></div>
+                <button class="btn btn-primary btn-block" type="submit" [disabled]="busy()">{{ busy() ? i.t('complaints.sending') : copy().send }} <span aria-hidden="true">↗</span></button>
+              </fieldset>
+            </form>
+          </div>
+          <section class="history" aria-labelledby="support-history-title">
+            <div class="history-heading"><div><h3 id="support-history-title">{{ copy().historyTitle }}</h3><p>{{ copy().historyHint }}</p></div><button class="refresh" type="button" (click)="loadTickets()" [disabled]="loading()" [attr.aria-label]="i.t('complaints.refresh')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3"/></svg></button></div>
+            @if (loading() && !items().length) { <div class="panel state" role="status">{{ i.t('common.loading') }}</div> }
+            @if (loadError()) { <div class="panel state"><p role="alert">{{ i.t('complaints.loadError') }}</p><button class="btn btn-ghost" type="button" (click)="loadTickets()">{{ i.t('complaints.retry') }}</button></div> }
+            @if (!loading() && !loadError() && !items().length) { <div class="panel state empty-state"><span aria-hidden="true">✦</span><h3>{{ copy().emptyTitle }}</h3><p>{{ copy().emptyText }}</p></div> }
+            <div class="ticket-list">
+              @for (ticket of items(); track ticket.id) {
+                <article class="panel ticket-card">
+                  <div class="ticket-meta"><span>{{ i.t('complaints.ticket', { n: ticket.id }) }}</span><span [class]="'status status-' + ticket.status">{{ i.t('complaints.status.' + ticket.status) }}</span></div>
+                  <h3><button class="ticket-toggle" type="button" (click)="toggle(ticket.id)" [attr.aria-expanded]="expanded() === ticket.id" [attr.aria-controls]="'support-ticket-' + ticket.id">{{ ticket.subject }}<span aria-hidden="true">{{ expanded() === ticket.id ? '−' : '+' }}</span></button></h3>
+                  <div class="ticket-info"><span>{{ i.t('complaints.category.' + ticket.category) }}</span><time [attr.datetime]="ticket.created_at">{{ date(ticket.created_at) }}</time></div>
+                  @if (expanded() === ticket.id) {
+                    <div class="ticket-detail" [id]="'support-ticket-' + ticket.id">
+                      @if (ticket.order) { <a class="order-link" routerLink="/orders">{{ i.t('complaints.orderNumber', { n: ticket.order }) }} ↗</a> }
+                      <p class="message-body">{{ ticket.message }}</p>
+                      @if (ticket.staff_response) { <div class="staff-response"><div class="response-heading"><strong>{{ i.t('complaints.response') }}</strong>@if (ticket.replied_at) { <time [attr.datetime]="ticket.replied_at">{{ date(ticket.replied_at) }}</time> }</div><p class="message-body">{{ ticket.staff_response }}</p></div> }
+                      @else { <p class="waiting">{{ i.t('complaints.waiting') }}</p> }
+                    </div>
+                  }
+                </article>
+              }
+            </div>
+          </section>
+        </div>
+      }
+    </section>
+  </div>
+</div>

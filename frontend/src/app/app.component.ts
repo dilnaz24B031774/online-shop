@@ -32,10 +32,10 @@ export class AppComponent implements OnInit {
   readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   private router = inject(Router);
-  /** /pay/... is the "bank app" on the phone: no shop header, footer or assistant there */
+  /** Payment and courier location sharing use a focused phone layout. */
   readonly payPage = toSignal(this.router.events.pipe(
-    filter(e => e instanceof NavigationEnd), map(() => this.router.url.startsWith('/pay/'))),
-    { initialValue: location.pathname.startsWith('/pay/') });
+    filter(e => e instanceof NavigationEnd), map(() => this.router.url.startsWith('/pay/') || this.router.url.split(/[?#]/)[0] === '/courier')),
+    { initialValue: location.pathname.startsWith('/pay/') || location.pathname === '/courier' });
 
   readonly langs = LANGS;
   readonly adminUrl = `${location.protocol}//${location.hostname || '127.0.0.1'}:8000/staff/`;
@@ -47,7 +47,7 @@ export class AppComponent implements OnInit {
 
   ngOnInit() {
     this.region.load();
-    this.api.categories().subscribe({ next: c => this.categories.set(c), error: () => {} });
+    this.api.categories().subscribe({ next: c => this.categories.set(c.filter(x => (x.product_count ?? 1) > 0)), error: () => {} });
   }
 
   search() {

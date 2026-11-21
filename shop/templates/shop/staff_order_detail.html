@@ -89,6 +89,48 @@
         {% else %}Не зарегистрирована{% endif %}</dd></div>{% endif %}
     </dl></div></section>
 
+    <section class="panel">
+      <div class="panel-head"><h2>Курьер и геопозиция</h2></div>
+      <div class="panel-body">
+        {% if delivery_tracking.courier_name %}
+          <p><strong>{{ delivery_tracking.courier_name }}</strong>{% if delivery_tracking.courier_phone %} · {{ delivery_tracking.courier_phone }}{% endif %}</p>
+          <p class="section-note">{% if tracking.source == 'gps' %}Координаты с телефона курьера.{% else %}Координаты, сообщённые сотрудником.{% endif %}
+            {% if delivery_tracking.position_updated_at %} Последнее сообщение: {{ delivery_tracking.position_updated_at|date:'d.m.Y H:i:s' }}.{% endif %}
+            {% if tracking.status == 'stale' %} Геопозиция устарела и скрыта с карты покупателя.{% endif %}</p>
+        {% else %}<p class="section-note">Курьер ещё не назначен. Покупатель видит статус заказа без выдуманной геопозиции.</p>{% endif %}
+        <p class="section-note">Местоположение курьера показывается покупателю только после передачи заказа в доставку. GPS-точка скрывается, если новых сообщений нет больше двух минут.</p>
+      </div>
+      {% if can_edit_tracking %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="update_tracking">
+        <div class="panel-body">
+          {{ tracking_form.non_field_errors }}
+          <div class="fields">{% for field in tracking_form %}<div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}
+          </div>{% endfor %}</div>
+          <p class="section-note">Поля координат — ручное обновление, без имитации движения. Для GPS с телефона создайте ссылку ниже.</p>
+        </div>
+        <div class="form-actions"><button class="button" type="submit">Сохранить данные доставки</button></div>
+      </form>
+      {% if delivery_tracking.courier_name %}<form method="post" class="panel-body">{% csrf_token %}<input type="hidden" name="action" value="clear_tracking"><button class="button secondary" type="submit">Снять курьера и отключить его ссылку</button></form>{% endif %}
+      {% endif %}
+      {% if can_share_tracking or can_revoke_tracking %}
+      <div class="panel-body">
+        {% if can_share_tracking %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="share_courier_location"><button class="button" type="submit">Создать новую GPS-ссылку курьера</button></form>
+        <p class="section-note">Ссылка действует до 24 часов. Новая ссылка сразу отключает предыдущую. Курьер сам разрешает передачу геопозиции на своём телефоне; для телефона нужен HTTPS-адрес сайта.</p>{% endif %}
+        {% if can_revoke_tracking %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="revoke_courier_location"><button class="button secondary" type="submit">Отключить GPS-ссылку</button></form>{% endif %}
+      </div>
+      {% endif %}
+      {% if courier_link %}
+      <div class="panel-body" role="status">
+        <label for="courier-link"><strong>Ссылка для назначенного курьера</strong></label>
+        <input id="courier-link" type="text" value="{{ courier_link }}" readonly autocomplete="off">
+        <p class="section-note">Скопируйте и передайте только курьеру этого заказа. Показана один раз, действует до {{ courier_link_expires|date:'d.m.Y H:i' }}. Ссылку не публикуйте.</p>
+        <a class="button secondary" href="{{ courier_link }}" target="_blank" rel="noopener noreferrer">Открыть страницу курьера</a>
+      </div>
+      {% endif %}
+    </section>
+
     <section class="panel"><div class="panel-head"><h2>Действия с заказом</h2></div><div class="panel-body order-actions">
       {% if can_confirm_payment %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="confirm_payment"><button class="button" type="submit">Подтвердить оплату (деньги получены)</button></form>{% endif %}
       {% if can_ship %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="ship"><button class="button" type="submit">Передать в доставку</button></form>{% endif %}

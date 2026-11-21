@@ -20,7 +20,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from shop import backup_views, complaints_staff, reports, staff
+from shop import backup_views, complaints_staff, purchase_export, reports, staff
 from shop.auth_forms import ProtectedAdminAuthenticationForm
 
 admin.site.index_template = "shop/admin_index.html"
@@ -45,6 +45,9 @@ urlpatterns = [
     path("staff/reports/", admin.site.admin_view(reports.reports), name="staff_reports"),
     path("staff/backups/", admin.site.admin_view(backup_views.backup_list), name="staff_backups"),
     path("staff/backups/<str:name>/", admin.site.admin_view(backup_views.backup_download), name="staff_backup_download"),
+    # full purchase export (must come before the generic "<kind>.csv" route)
+    path("staff/reports/purchases.csv", admin.site.admin_view(purchase_export.purchases_csv), name="staff_purchases_csv"),
+    path("staff/reports/purchases.pdf", admin.site.admin_view(purchase_export.purchases_pdf), name="staff_purchases_pdf"),
     path("staff/reports/<slug:kind>.csv", admin.site.admin_view(reports.reports_csv), name="staff_reports_csv"),
     path("admin/", admin.site.urls),
     path("api/", include("shop.urls")),

@@ -1,0 +1,55 @@
+import { Lang } from './i18n.service';
+
+const ru = {
+  title: 'Курьер Sauda', lead: 'Делитесь местоположением только во время доставки.',
+  loading: 'Проверяем ссылку доставки…', invalid: 'Ссылка недействительна. Попросите менеджера выдать новую.',
+  ended: 'Эта доставка завершена или срок ссылки истёк. Передача местоположения недоступна.',
+  order: 'Доставка заказа', start: 'Передавать геопозицию', stop: 'Остановить передачу',
+  active: 'Передача включена', paused: 'Передача выключена', locating: 'Определяем местоположение…',
+  ready: 'Покупатель увидит вашу точку после включения передачи.',
+  note: 'Ваше местоположение доступно покупателю этого заказа и сотрудникам магазина. Передача работает, пока эта страница открыта.',
+  last: 'Последняя отправка', accuracy: 'Точность', meters: 'м',
+  denied: 'Доступ к геолокации запрещён. Разрешите его в настройках браузера и включите передачу снова.',
+  unavailable: 'Не удалось определить местоположение. Проверьте GPS и подключение к интернету.',
+  secure: 'Для GPS на телефоне откройте защищённую HTTPS-ссылку магазина. Обычный HTTP-адрес в Wi-Fi не поддерживает геолокацию.',
+  unsupported: 'Этот браузер не поддерживает геолокацию. Откройте ссылку в современном браузере телефона.',
+  network: 'Точка не отправлена. Проверьте интернет — следующая попытка произойдёт автоматически.',
+  retry: 'Повторить проверку ссылки', privacy: 'Ссылка предназначена только назначенному курьеру. Не пересылайте её другим людям.',
+  help: 'Помощь', every: 'Обновление примерно каждые 15 секунд',
+};
+type Copy = typeof ru;
+const en: Copy = {
+  title: 'Sauda Courier', lead: 'Share your location only while delivering an order.',
+  loading: 'Checking the delivery link…', invalid: 'This link is invalid. Ask the manager for a new link.',
+  ended: 'This delivery has ended or the link has expired. Location sharing is unavailable.',
+  order: 'Delivery for order', start: 'Share my location', stop: 'Stop sharing',
+  active: 'Location sharing is on', paused: 'Location sharing is off', locating: 'Finding your location…',
+  ready: 'The customer will see your position after you start sharing.',
+  note: 'Your location is available to the customer for this order and shop staff. Sharing works while this page stays open.',
+  last: 'Last update sent', accuracy: 'Accuracy', meters: 'm',
+  denied: 'Location access was denied. Allow it in your browser settings, then start sharing again.',
+  unavailable: 'Your location is unavailable. Check GPS and your internet connection.',
+  secure: 'For phone GPS, open the shop using its secure HTTPS link. An ordinary HTTP address on Wi-Fi cannot access your location.',
+  unsupported: 'This browser does not support location sharing. Open the link in a current phone browser.',
+  network: 'The location was not sent. Check your connection; the next attempt is automatic.',
+  retry: 'Check the link again', privacy: 'This link belongs to the assigned courier. Do not share it with anyone else.',
+  help: 'Help', every: 'Updates approximately every 15 seconds',
+};
+const kk: Copy = {
+  title: 'Sauda курьері', lead: 'Орналасқан жеріңізді тек жеткізу кезінде бөлісіңіз.',
+  loading: 'Жеткізу сілтемесі тексерілуде…', invalid: 'Сілтеме жарамсыз. Менеджерден жаңа сілтеме сұраңыз.',
+  ended: 'Жеткізу аяқталды немесе сілтеменің мерзімі өтті. Геолокация жіберілмейді.',
+  order: 'Тапсырысты жеткізу', start: 'Орналасқан жерімді жіберу', stop: 'Жіберуді тоқтату',
+  active: 'Геолокация жіберілуде', paused: 'Геолокация өшірулі', locating: 'Орналасқан жер анықталуда…',
+  ready: 'Жіберуді қосқаннан кейін сатып алушы сіздің орныңызды көреді.',
+  note: 'Орналасқан жеріңіз осы тапсырыстың сатып алушысына және дүкен қызметкерлеріне көрінеді. Жіберу бет ашық тұрғанда жұмыс істейді.',
+  last: 'Соңғы жіберу', accuracy: 'Дәлдігі', meters: 'м',
+  denied: 'Геолокацияға рұқсат жоқ. Браузер баптауларынан рұқсат беріп, қайта қосыңыз.',
+  unavailable: 'Орналасқан жер анықталмады. GPS пен интернетті тексеріңіз.',
+  secure: 'Телефондағы GPS үшін дүкеннің қауіпсіз HTTPS сілтемесін ашыңыз. Wi-Fi желісіндегі қарапайым HTTP мекенжайы геолокацияны қолдамайды.',
+  unsupported: 'Бұл браузер геолокацияны қолдамайды. Сілтемені телефондағы заманауи браузерде ашыңыз.',
+  network: 'Координаттар жіберілмеді. Интернетті тексеріңіз, қайта жіберу автоматты түрде орындалады.',
+  retry: 'Сілтемені қайта тексеру', privacy: 'Сілтеме тек тағайындалған курьерге арналған. Басқа адамдарға жібермеңіз.',
+  help: 'Көмек', every: 'Шамамен 15 секунд сайын жаңартылады',
+};
+export const COURIER_COPY: Record<Lang, Copy> = { ru, en, kk };

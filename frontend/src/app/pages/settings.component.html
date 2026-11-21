@@ -12,13 +12,47 @@
           <h2>{{ displayName() }}</h2>
           <span class="handle">&#64;{{ auth.user()?.username }}</span>
           <span class="member-badge"><span aria-hidden="true">✓</span> {{ i.t('settings.yourAccount') }}</span>
+          <nav class="section-nav" [attr.aria-label]="i.t('nav.settings')">
+            <button type="button" (click)="goTo('appearance')"><span aria-hidden="true">◐</span>{{ appearance().title }}</button>
+            <button type="button" (click)="goTo('profile-section')"><span aria-hidden="true">☺</span>{{ i.t('settings.profile') }}</button>
+            <button type="button" (click)="goTo('currency-section')"><span aria-hidden="true">$</span>{{ i.t('settings.currency') }}</button>
+            <button type="button" (click)="goTo('security-section')"><span aria-hidden="true">✱</span>{{ i.t('settings.security') }}</button>
+          </nav>
           <div class="account-meta"><span>{{ i.t('auth.email') }}</span><strong>{{ auth.user()?.email }}</strong></div>
           <div class="account-tip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z"/><path d="m8 12 3 3 5-6"/></svg><p>{{ i.t('settings.accountHint') }}</p></div>
           <a routerLink="/complaints" class="complaints-link">{{ i.t('settings.complaintsLink') }} <span aria-hidden="true">↗</span></a>
+          <a routerLink="/support" class="complaints-link">{{ appearance().support }} <span aria-hidden="true">↗</span></a>
         </aside>
 
         <div class="settings-content">
-          <section class="panel settings-card" aria-labelledby="profile-title">
+          <section class="panel settings-card appearance-card" id="appearance" aria-labelledby="appearance-title">
+            <div class="card-heading"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18V3Z"/></svg></span><div><h2 id="appearance-title">{{ appearance().title }}</h2><p>{{ appearance().subtitle }}</p></div></div>
+            <fieldset class="appearance-group">
+              <legend>{{ appearance().theme }}</legend>
+              <div class="theme-choices">
+                <button type="button" class="theme-choice" [class.selected]="theme.theme() === 'light'" [attr.aria-pressed]="theme.theme() === 'light'" (click)="chooseTheme('light')">
+                  <span class="theme-preview light-preview" aria-hidden="true"><span class="preview-sidebar"></span><span class="preview-content"><span></span><span></span><span></span></span><span class="preview-check">✓</span></span>
+                  <span class="choice-label"><strong>{{ appearance().light }}</strong><small>{{ appearance().lightHint }}</small></span>
+                </button>
+                <button type="button" class="theme-choice" [class.selected]="theme.theme() === 'dark'" [attr.aria-pressed]="theme.theme() === 'dark'" (click)="chooseTheme('dark')">
+                  <span class="theme-preview dark-preview" aria-hidden="true"><span class="preview-sidebar"></span><span class="preview-content"><span></span><span></span><span></span></span><span class="preview-check">✓</span></span>
+                  <span class="choice-label"><strong>{{ appearance().dark }}</strong><small>{{ appearance().darkHint }}</small></span>
+                </button>
+              </div>
+            </fieldset>
+            <fieldset class="appearance-group">
+              <legend>{{ appearance().accent }}</legend>
+              <div class="accent-choices">
+                @for (accent of accents; track accent.id) {
+                  <button type="button" class="accent-choice" [class.selected]="theme.accent() === accent.id" [attr.aria-pressed]="theme.accent() === accent.id" (click)="chooseAccent(accent.id)"><span class="swatch" [style.background]="accent.color" aria-hidden="true">@if (theme.accent() === accent.id) { ✓ }</span><span>{{ appearance().accents[accent.id] }}</span></button>
+                }
+              </div>
+            </fieldset>
+            <div class="field language-field"><label for="settings-language">{{ appearance().language }}</label><select id="settings-language" name="interface_language" [ngModel]="i.lang()" (ngModelChange)="chooseLanguage($event)" aria-describedby="settings-language-hint">@for (language of languages; track language.code) { <option [value]="language.code">{{ language.label }}</option> }</select><small class="hint" id="settings-language-hint">{{ appearance().languageHint }}</small></div>
+            <div class="appearance-footer"><span>{{ appearance().deviceHint }}</span><span class="saved" role="status" aria-live="polite">@if (appearanceSaved()) { ✓ {{ appearance().saved }} }</span></div>
+          </section>
+
+          <section class="panel settings-card" id="profile-section" aria-labelledby="profile-title">
             <div class="card-heading"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg></span><div><h2 id="profile-title">{{ i.t('settings.profile') }}</h2><p>{{ i.t('settings.profileHint') }}</p></div></div>
             <form (ngSubmit)="saveProfile()" novalidate>
               @if (profileErrors()['form']) { <div class="alert alert-error" role="alert">{{ profileErrors()['form'] }}</div> }
@@ -36,7 +70,7 @@
             </form>
           </section>
 
-          <section class="panel settings-card" aria-labelledby="currency-title">
+          <section class="panel settings-card" id="currency-section" aria-labelledby="currency-title">
             <div class="card-heading"><span class="section-icon amber" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 8h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9M12 6v12"/></svg></span><div><h2 id="currency-title">{{ i.t('settings.currency') }}</h2><p>{{ i.t('settings.currencyHint') }}</p></div></div>
             <form (ngSubmit)="saveCurrency()" novalidate>
               @if (currencyErrors()['form']) { <div class="alert alert-error" role="alert">{{ currencyErrors()['form'] }}</div> }
@@ -50,7 +84,7 @@
 
           <app-telegram-link />
 
-          <section class="panel settings-card" aria-labelledby="password-title">
+          <section class="panel settings-card" id="security-section" aria-labelledby="password-title">
             <div class="card-heading"><span class="section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4M12 14v3"/></svg></span><div><h2 id="password-title">{{ i.t('settings.security') }}</h2><p>{{ i.t('settings.securityHint') }}</p></div></div>
             <form (ngSubmit)="savePassword()" novalidate>
               @if (passwordErrors()['form']) { <div class="alert alert-error" role="alert">{{ passwordErrors()['form'] }}</div> }

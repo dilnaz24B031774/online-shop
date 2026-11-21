@@ -1,0 +1,110 @@
+<div class="container tracking-page">
+  <a class="back-link" routerLink="/profile" [queryParams]="{ tab: 'orders' }"><span aria-hidden="true">←</span> {{ copy().back }}</a>
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">SAUDA · {{ copy().order }} #{{ id() }}</p>
+      <h1>{{ copy().title }}</h1>
+    </div>
+    <button class="btn btn-outline refresh" type="button" (click)="reload()" [disabled]="refreshing() || loading()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 6a8 8 0 0 1 13 3M18 18a8 8 0 0 1-13-3"/></svg>
+      {{ refreshing() ? copy().refreshing : copy().refresh }}
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-panel panel" role="status"><span class="loading-dot"></span>{{ copy().loading }}</div>
+  } @else {
+    @if (error(); as issue) {
+      <div class="error-panel" role="alert">
+        <div><strong>{{ copy().errorTitle }}</strong><p>{{ issue === 'not_found' ? copy().notFound : issue === 'session' ? copy().sessionExpired : copy().errorText }}</p></div>
+        @if (issue === 'connection') { <button class="btn btn-outline" type="button" (click)="reload()" [disabled]="refreshing()">{{ copy().retry }}</button> }
+      </div>
+    }
+    @if (tracking(); as delivery) {
+      @if (delivery.order_status !== 'cancelled') {
+        <section class="progress-card panel" [attr.aria-label]="copy().progress">
+          <h2>{{ copy().progress }}</h2>
+          <ol class="delivery-progress">
+            @for (index of [0, 1, 2]; track index) {
+              <li [class.done]="index <= currentStep()" [class.current]="index === currentStep()" [attr.aria-current]="index === currentStep() ? 'step' : null">
+                <span class="step-circle" aria-hidden="true">@if (index < currentStep() || delivery.order_status === 'delivered') { <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> } @else { {{ index + 1 }} }</span>
+                <span><strong>{{ stepLabel(index) }}</strong><small>{{ index < currentStep() || delivery.order_status === 'delivered' ? copy().completed : index === currentStep() ? copy().current : copy().upcoming }}</small></span>
+              </li>
+            }
+          </ol>
+        </section>
+      }
+      @if (stale()) {
+        <div class="stale-panel" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg><div><strong>{{ copy().stale }}</strong><p>{{ copy().staleHint }}</p></div></div>
+      }
+
+      <div class="tracking-grid">
+        <section class="map-card" [attr.aria-label]="copy().mapTitle">
+          <div class="map-heading">
+            <h2>{{ copy().mapTitle }}</h2>
+            <button type="button" class="recenter" (click)="map?.recenter()" [disabled]="!hasCoordinates()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+              {{ copy().recenter }}
+            </button>
+          </div>
+          <div class="map-stage">
+            @if (hasCoordinates()) {
+              <app-delivery-map [position]="courierPosition()" [destination]="delivery.destination" [courierName]="delivery.courier?.name ?? ''" />
+            } @else {
+              <div class="no-location">
+                <div class="empty-map-icon"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="m7 12 11-5 12 5 11-5v29l-11 5-12-5-11 5V12ZM18 7v29M30 12v29"/><path d="M30 14c0 7-7 12-7 12s-7-5-7-12a7 7 0 1 1 14 0Z"/><circle cx="23" cy="14" r="2"/></svg></div>
+                <strong>{{ state()?.title }}</strong><p>{{ state()?.text }}</p>
+              </div>
+            }
+          </div>
+          <div class="map-footer">
+            <div class="legend">
+              @if (courierPosition()) { <span><i class="courier-dot"></i>{{ copy().courier }}</span> }
+              @if (delivery.destination) { <span><i class="destination-dot"></i>{{ copy().destination }}</span> }
+            </div>
+            @if (reportedAt()) {
+              <span class="last-update">{{ copy().updated }} · {{ date(reportedAt()) }}</span>
+            } @else { <span class="last-update">{{ copy().noUpdate }}</span> }
+          </div>
+        </section>
+
+        <aside class="delivery-card">
+          <div class="state-icon" [class.delivered]="delivery.status === 'delivered'" [class.cancelled]="delivery.status === 'cancelled'">
+            @if (delivery.status === 'delivered') { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg> }
+            @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg> }
+          </div>
+          <h2>{{ state()?.title }}</h2>
+          <p class="state-text">{{ state()?.text }}</p>
+          @if (eta(); as estimate) {
+            <div class="eta"><span>{{ copy().latestEstimate }}</span><strong>{{ estimate }}</strong></div>
+          }
+
+          @if (delivery.courier; as courier) {
+            <div class="courier-card">
+              <span class="courier-avatar" aria-hidden="true">{{ courier.name.slice(0, 1).toUpperCase() }}</span>
+              <div><small>{{ copy().courier }}</small><strong>{{ courier.name }}</strong>@if (courier.phone) { <span>{{ courier.phone }}</span> }</div>
+              @if (phoneHref(); as href) {
+                <a class="call-courier" [href]="href" [attr.aria-label]="copy().call"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 3 3 5-2 2c2 3 3 4 6 6l2-2 5 3-1 4C10 22 2 14 3 4l4-1Z"/></svg></a>
+              }
+            </div>
+          }
+          <div class="address-card">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <div><small>{{ copy().deliveryTo }}</small><p>{{ delivery.shipping_address }}</p></div>
+          </div>
+          @if (delivery.position_updated_at) {
+            <p class="source-label"><span class="source-dot"></span>{{ delivery.source === 'gps' ? copy().sourceGps : copy().sourceManual }}</p>
+            @if (delivery.source === 'manual') { <p class="update-note">{{ copy().manualHint }}</p> }
+          }
+          @if (delivery.order_status === 'shipped') { <p class="update-note">{{ copy().autoRefresh }}</p> }
+        </aside>
+      </div>
+
+      <section class="support-card">
+        <div class="help-icon" aria-hidden="true">?</div>
+        <div><h2>{{ copy().supportTitle }}</h2><p>{{ copy().supportText }}</p></div>
+        <a routerLink="/support" [queryParams]="{ order: delivery.order_id }" class="btn btn-outline">{{ copy().supportLink }} <span aria-hidden="true">↗</span></a>
+      </section>
+    }
+  }
+</div>

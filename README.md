@@ -83,6 +83,31 @@ Password for all: `Shop2026!`
 | manager | store manager |
 | admin | administrator |
 
+These passwords are set by `seed_shop` on a fresh database. If your database was filled differently
+or someone changed a password, set it again (you will be asked for the new password twice):
+
+```bash
+python3 manage.py changepassword admin
+python3 manage.py changepassword manager
+```
+
+## Delivery tracking, support and purchase export
+
+- **Courier on the map** — staff assign a courier on the order page (`/staff/orders/<id>/`), move the
+  order to "Shipped" and create a courier link. The courier opens it on the phone and taps
+  "Share my location"; the customer sees the courier on the map under *My orders → Track delivery*.
+  No GPS service or API key is needed: the phone browser sends its own position, the map is OpenStreetMap.
+  Phones share location only over HTTPS, so use `npm run tunnel` for a real phone.
+- **Delivery address on the map** — if staff leave the destination coordinates empty, they are found
+  from the order address through OpenStreetMap Nominatim. Set `NOMINATIM_USER_AGENT` in `.env`
+  (an app name and contact, as Nominatim's usage policy asks); `NOMINATIM_ENABLED=0` turns it off.
+- **"Courier is nearby"** — the customer gets a notification once the courier is within 500 m.
+- **Help center** — `/support`: FAQ, quick contacts and requests to the shop team.
+- **Appearance** — `/settings`: light/dark theme and accent colour.
+- **Purchase export** — *Reports → Export all purchases* (or the CSV/PDF buttons on *Orders*): every order
+  with customer, items, payment, discount and refunds for a chosen period. Only administrators and staff
+  who can see both orders and users can download it, because it contains personal data.
+
 ## Features
 
 - Registration and login with JWT tokens, password rules (min 8 chars, a digit, a capital letter)

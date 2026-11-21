@@ -1,0 +1,14 @@
+:host { display: block; font-size: 1rem; }
+.courier-page { min-height: 100dvh; background: var(--soft); padding: clamp(1rem, 4vw, 3rem) 1rem; display: grid; place-items: center; }
+.courier-card { width: min(100%, 500px); padding: clamp(1.5rem, 5vw, 2.5rem); background: var(--surface); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); text-align: center; }
+.brand { display: flex; gap: .1rem; align-items: baseline; font-size: 1.6rem; font-weight: 750; text-align: left; color: var(--green-700); }
+.brand > span { color: var(--amber); }.brand small { margin-left: auto; font-size: .875rem; font-weight: 500; color: var(--muted); }
+.location-icon { display: grid; place-items: center; width: 84px; height: 84px; margin: 2rem auto 1rem; border-radius: 24px; background: var(--soft); color: var(--muted); }
+.location-icon.on { background: var(--green-50); color: var(--green-700); }
+svg { width: 42px; height: 42px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+h1 { font-size: clamp(1.6rem, 6vw, 2rem); margin: .5rem 0; }.lead { color: var(--muted); line-height: 1.6; }
+.delivery { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; margin: 1.5rem 0; text-align: left; }.delivery div span { display: block; color: var(--muted); font-size: .875rem; }.delivery div strong { font-size: 1.25rem; }.delivery > strong { overflow-wrap: anywhere; }
+.sharing-state { display: flex; justify-content: center; align-items: center; gap: .5rem; font-weight: 650; }.dot { background: var(--muted); width: 9px; height: 9px; border-radius: 50%; }.active { color: var(--green-700); }.active .dot { background: currentColor; }
+.hint { color: var(--muted); font-size: .875rem; line-height: 1.5; }.btn { width: 100%; margin-top: 1rem; font-size: 1rem; min-height: 48px; justify-content: center; }.stop { border: 1px solid var(--red); color: var(--red); background: transparent; }
+.last { display: flex; gap: 1rem; justify-content: space-around; padding: 1rem 0; }.last span { font-size: .875rem; color: var(--muted); }.last strong { display: block; font-size: 1rem; margin-top: .35rem; color: var(--text); }.privacy { color: var(--muted); font-size: .875rem; line-height: 1.6; text-align: left; }
+footer { border-top: 1px solid var(--line); margin-top: 1.5rem; padding-top: .75rem; font-size: .875rem; color: var(--muted); line-height: 1.6; }footer a { color: var(--green-700); } .alert { text-align: left; }

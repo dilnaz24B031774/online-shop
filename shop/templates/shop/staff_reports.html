@@ -37,6 +37,47 @@
   <div class="stat"><span class="stat-label">Продано товаров</span><strong class="stat-value number">{{ summary.units }}</strong><span class="stat-note">Штук за период</span></div>
 </div>
 
+{% if can_export %}
+<section class="panel export-panel" aria-labelledby="export-title">
+  <div class="panel-head">
+    <div><h2 id="export-title">Выгрузка всех покупок</h2>
+      <p class="export-hint">Каждый заказ с покупателем, товарами, оплатой, скидкой и возвратами. CSV открывается в Excel, PDF — готовый отчёт для печати.</p></div>
+  </div>
+  <form class="export-form" method="get" action="{% url 'staff_purchases_csv' %}">
+    <label>С<input type="date" name="date_from" value="{{ export.date_from|date:'Y-m-d' }}" required></label>
+    <label>По<input type="date" name="date_to" value="{{ export.date_to|date:'Y-m-d' }}" required></label>
+    <label>Статус
+      <select name="status">
+        <option value="">Все статусы</option>
+        {% for value, label in export_statuses %}<option value="{{ value }}" {% if value == export.status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="check"><input type="checkbox" name="demo" value="1" {% if export.demo %}checked{% endif %}> С демо-заказами</label>
+    <div class="export-buttons">
+      <button type="submit" class="export-btn csv" formaction="{% url 'staff_purchases_csv' %}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h8"/></svg>Скачать CSV</button>
+      <button type="submit" class="export-btn pdf" formaction="{% url 'staff_purchases_pdf' %}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M12 12v6M9 15l3 3 3-3"/></svg>Скачать PDF</button>
+    </div>
+  </form>
+</section>
+<style>
+  .export-panel { margin-bottom:18px; }
+  .export-hint { margin:4px 0 0; color:var(--muted); font-size:12px; }
+  .export-form { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px; padding:4px 18px 18px; }
+  .export-form label { display:flex; flex-direction:column; gap:5px; font-size:11px; font-weight:600; color:var(--muted); }
+  .export-form input[type=date], .export-form select { min-width:150px; }
+  .export-form label.check { flex-direction:row; align-items:center; gap:7px; font-size:12px; color:var(--ink); padding-bottom:9px; }
+  .export-buttons { display:flex; gap:10px; margin-left:auto; }
+  .export-btn { display:inline-flex; align-items:center; gap:8px; border:0; border-radius:10px; padding:10px 16px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .export-btn svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .export-btn.csv { background:#eef5f1; color:var(--green); border:1px solid #cfe2d7; }
+  .export-btn.pdf { background:var(--green); color:white; }
+  .export-btn:hover { filter:brightness(.96); }
+  @media (max-width:700px) { .export-buttons { margin-left:0; width:100%; } .export-btn { flex:1; justify-content:center; } }
+</style>
+{% endif %}
+
 <div class="grid-two">
   <section class="panel">
     <div class="panel-head"><h2>Продажи по категориям</h2><a href="{% url 'staff_reports_csv' 'categories' %}?period={{ period }}{{ demo_q }}">Скачать CSV</a></div>

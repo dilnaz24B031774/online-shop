@@ -8,7 +8,8 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_safe
 
-from . import services
+from . import purchase_export, services
+from .models import Order
 
 PERIODS = (("7", "7 дней"), ("30", "30 дней"), ("90", "3 месяца"), ("all", "Всё время"))
 
@@ -50,6 +51,9 @@ def reports(request):
         "low_stock": services.report_low_stock(threshold),
         "promos": services.report_promo_usage(since, demo),
         "refunds": services.report_refunds(since, demo),
+        "can_export": purchase_export.can_export(request.user),
+        "export": purchase_export.export_filters(request),
+        "export_statuses": [(value, purchase_export.STATUS_LABELS[value]) for value in Order.Status.values],
     })
 
 
