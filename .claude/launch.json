@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-fresh",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "frontend", "ng", "serve", "--port", "4201"],
+      "cwd": "frontend",
+      "port": 4201
+    }
+  ]
+}
