@@ -59,7 +59,6 @@ import { PayLinkService } from '../core/pay-link.service';
 
             <footer>
               <span class="muted">{{ i.t('orders.payment') }}: {{ o.payment_method ? i.t('pay.' + o.payment_method) : '–' }}
-<<<<<<< HEAD
                 @if (o.card_last4) { · {{ o.card_brand?.toUpperCase() }} •••• {{ o.card_last4 }} }
                 @if (o.installment_months) { · 0-0-{{ o.installment_months }} }
                 @if (isExpired(o)) { <span class="pay-badge p-failed">{{ i.t('status.unpaid') }}</span> }
@@ -104,12 +103,6 @@ import { PayLinkService } from '../core/pay-link.service';
               </div>
             }
 
-=======
-                @if (o.payment_status) { ({{ i.t('status.' + o.payment_status) }}) }</span>
-              <strong class="sum">\${{ o.total_amount }}</strong>
-            </footer>
-
->>>>>>> origin/dilyara-changes
             @if (o.status === 'paid' || o.status === 'pending') {
               @if (confirmId() === o.id) {
                 <div class="confirm" role="alert">
@@ -142,7 +135,6 @@ import { PayLinkService } from '../core/pay-link.service';
   `,
   styles: [`
     .page-title { font-size: 1.5rem; margin-bottom: 1rem; }
-<<<<<<< HEAD
     .s-expired { background: #f3eceb; color: #9a4a42; }
     .it-name { display: flex; flex-direction: column; min-width: 0; }
     .returned { color: #466b9b; font-size: .78rem; font-weight: 600; }
@@ -165,8 +157,6 @@ import { PayLinkService } from '../core/pay-link.service';
     .pay-badge { display: inline-block; margin-left: .3rem; padding: .05em .55em; border-radius: 6px; font-size: .78rem; font-weight: 700; background: #eef2ed; color: #5a6d61; }
     .p-paid { background: #e7f3e9; color: #267247; } .p-pending { background: #fff3dc; color: #956111; }
     .p-failed { background: #fbecea; color: #aa4942; } .p-refunded { background: #e8eff9; color: #466b9b; }
-=======
->>>>>>> origin/dilyara-changes
     .order { margin-bottom: 1.2rem; }
     .complaint-row { margin-top: .8rem; font-size: .85rem; }
     .complaint-row a { display: inline-flex; align-items: center; gap: .4rem; }
@@ -228,7 +218,6 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.api.orders().subscribe({ next: o => this.orders.set(o), error: () => this.error.set(true) });
   }
 
-<<<<<<< HEAD
   ngOnDestroy() {
     clearInterval(this.qrPoll);
   }
@@ -262,8 +251,6 @@ export class OrdersComponent implements OnInit, OnDestroy {
     });
   }
 
-=======
->>>>>>> origin/dilyara-changes
   cancel(o: Order) {
     this.busy.set(true);
     this.failMsg.set('');

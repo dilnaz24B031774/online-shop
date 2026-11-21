@@ -28,7 +28,7 @@ from .serializers import (
 
 
 def _products():
-    return (Product.objects.filter(is_active=True).select_related("category")
+    return (Product.objects.filter(is_active=True, category__is_active=True).select_related("category")
             .annotate(avg_rating=Avg("reviews__rating"), review_count=Count("reviews", distinct=True)))
 
 
@@ -112,7 +112,7 @@ def products(request):
 @permission_classes([AllowAny])
 def product_filters(request):
     """GET /api/products/filters/?category=1 -> brands and price range for the filter panel"""
-    qs = Product.objects.filter(is_active=True)
+    qs = Product.objects.filter(is_active=True, category__is_active=True)
     if request.GET.get("category"):
         qs = qs.filter(category_id=request.GET["category"])
     prices = qs.aggregate(min=Min("price"), max=Max("price"))
@@ -164,7 +164,7 @@ def search(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def add_review(request, pk):
-    product = get_object_or_404(Product, pk=pk, is_active=True)
+    product = get_object_or_404(Product, pk=pk, is_active=True, category__is_active=True)
     duplicate = {"code": "review_exists", "detail": "You have already reviewed this purchase."}
     purchase_required = {"code": "purchase_required", "detail": "Buy and pay for this product before leaving a review."}
     serializer = ReviewSerializer(data=request.data)
@@ -291,7 +291,8 @@ def _favorites_response(user):
 def favorites(request):
     """GET - list of liked products. POST {product_id} - like a product."""
     if request.method == "POST":
-        product = get_object_or_404(Product, pk=request.data.get("product_id"), is_active=True)
+        product = get_object_or_404(Product, pk=request.data.get("product_id"),
+                                    is_active=True, category__is_active=True)
         Favorite.objects.get_or_create(user=request.user, product=product)
     return _favorites_response(request.user)
 
@@ -317,13 +318,18 @@ def _cart_response(user):
 def cart(request):
     """POST {product_id, quantity}: sets the quantity (0 removes the product)."""
     if request.method == "POST":
-        product = get_object_or_404(Product, pk=request.data.get("product_id"), is_active=True)
+        quantity = request.data.get("quantity", 1)
+        if isinstance(quantity, bool) or not isinstance(quantity, (int, str)):
+            return Response({"detail": "Quantity must be an integer."}, status=400)
         try:
-            qty = int(request.data.get("quantity", 1))
+            qty = int(quantity)
         except (TypeError, ValueError):
-            return Response({"detail": "Quantity must be a number."}, status=400)
+            return Response({"detail": "Quantity must be an integer."}, status=400)
+        product = get_object_or_404(Product, pk=request.data.get("product_id"))
         if qty <= 0:
             CartItem.objects.filter(user=request.user, product=product).delete()
+        elif not product.is_active or not product.category.is_active:
+            return Response({"detail": "Not found."}, status=404)
         elif qty > product.stock_quantity:
             return Response({"detail": f"Only {product.stock_quantity} left in stock."}, status=400)
         else:
@@ -395,9 +401,12 @@ def assistant(request):
     from .assistant import reply
     user = request.user if request.user.is_authenticated else None
     result = reply(str(request.data.get("message", ""))[:300], request.data.get("lang", "en"), user)
+    visible = set(Product.objects.filter(
+        pk__in=[p.pk for p in result["products"]], is_active=True, category__is_active=True,
+    ).values_list("pk", flat=True))
     return Response({
         "text": result["text"],
-        "products": ProductSerializer(result["products"], many=True).data,
+        "products": ProductSerializer([p for p in result["products"] if p.pk in visible], many=True).data,
         "suggestions": result["suggestions"],
     })
 
@@ -509,7 +518,7 @@ def stock_alerts(request):
 @permission_classes([IsAuthenticated])
 def notify_me(request, pk):
     """POST - tell me when the product is back. DELETE - I do not wait any more."""
-    product = get_object_or_404(Product, pk=pk, is_active=True)
+    product = get_object_or_404(Product, pk=pk, is_active=True, category__is_active=True)
     if request.method == "DELETE":
         services.unsubscribe_stock(request.user, product.pk)
         return Response({"subscribed": False})

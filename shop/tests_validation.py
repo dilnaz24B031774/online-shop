@@ -160,7 +160,9 @@ class CheckoutTests(BaseApiTest):
         CartItem.objects.create(user=self.user, product=self.mouse, quantity=qty)
 
     def checkout(self, **data):
-        return self.post("/api/checkout/", {"address_id": self.address.id, "method": "card", **data})
+        card = {"number": "4242424242424242", "holder": "AIGERIM K", "exp_month": 12,
+                "exp_year": timezone.localdate().year + 1, "cvc": "123"}
+        return self.post("/api/checkout/", {"address_id": self.address.id, "method": "card", "card": card, **data})
 
     def test_empty_cart_and_bad_payment_method(self):
         self.assertEqual(self.checkout().status_code, 400)

@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { Component, computed, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-=======
-import { Component, effect, inject, input, signal } from '@angular/core';
->>>>>>> origin/dilyara-changes
 import { DOCUMENT, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -249,7 +245,6 @@ import { RegionService } from '../core/region.service';
     .delivery:hover .change { text-decoration: underline; }
     .media { min-width: 0; }
     .art { border-radius: 18px; overflow: hidden; height: 460px; background: var(--soft); padding: 2rem; border: 1px solid var(--line); }
-<<<<<<< HEAD
     .main-photo { width: 100%; height: 100%; object-fit: contain; display: block; }
     .thumbs { display: flex; gap: 10px; margin-top: 12px; overflow-x: auto; padding-bottom: 2px; }
     .thumb { flex: none; width: 74px; height: 74px; padding: 6px; border-radius: 12px; cursor: pointer;
@@ -257,8 +252,6 @@ import { RegionService } from '../core/region.service';
     .thumb:hover { border-color: var(--line); }
     .thumb.on { border-color: var(--green-700); }
     .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
-=======
->>>>>>> origin/dilyara-changes
 
     h1 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); margin: .6rem 0 .4rem; }
     .chip { text-decoration: none; }
@@ -343,10 +336,7 @@ export class ProductComponent {
   private api = inject(ApiService);
   private router = inject(Router);
   private doc = inject(DOCUMENT);
-<<<<<<< HEAD
   private destroyRef = inject(DestroyRef);
-=======
->>>>>>> origin/dilyara-changes
 
   readonly id = input.required<string>();   // from /product/:id
 
@@ -521,10 +511,10 @@ export class ProductComponent {
     this.fav.toggle(productId).subscribe({ error: () => {} });
   }
 
-  /** Link that opens WhatsApp: "<name> — $<price>" and the address of this product page. */
+  /** Share the product name, selected-currency price and address on WhatsApp. */
   waLink(p: ProductDetail): string {
     const url = `${this.doc.location.origin}/product/${p.id}`;
-    const text = `${this.i.pick(p)} — $${p.price}\n${url}`;
+    const text = `${this.i.pick(p)} — ${this.money.format(p.price)}\n${url}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 }

@@ -10,8 +10,9 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.conf import settings
-from django.db import transaction
-from django.db.models import Q, Sum, F, Count, Avg, DecimalField, ExpressionWrapper
+from django.db import connection, transaction
+from django.db.models import Q, Sum, F, Count, Avg, DecimalField, ExpressionWrapper, Value
+from django.db.models.functions import Collate
 from django.utils import timezone
 
 from . import payments
@@ -108,17 +109,18 @@ def place_order(user, address: Address, method: str, promo_code: str = "", card:
     if not cart:
         raise EmptyCartError("The cart is empty.")
 
-    # 1. Lock the product rows: a second customer must WAIT until we finish.
+    # 1. Lock products and their categories so availability cannot change during checkout.
     #    This stops two people from buying the last item at the same moment.
     product_ids = [item.product_id for item in cart]
     products = {
-        p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids)
+        p.id: p for p in Product.objects.select_for_update().select_related("category")
+        .filter(id__in=product_ids).order_by("pk")
     }
 
     # 2. Check stock for every product
     for item in cart:
         product = products[item.product_id]
-        if not product.is_active or product.stock_quantity < item.quantity:
+        if not product.is_active or not product.category.is_active or product.stock_quantity < item.quantity:
             raise OutOfStockError(f"Not enough stock for {product.name_en}.")
 
     # 3. Totals and promo code (the promo row is locked: two orders cannot take its last "use")
@@ -426,7 +428,8 @@ def notify_back_in_stock(product_ids) -> int:
         return 0
     subs = list(StockSubscription.objects.filter(
         product_id__in=product_ids, notified_at=None,
-        product__stock_quantity__gt=0, product__is_active=True).select_related("product"))
+        product__stock_quantity__gt=0, product__is_active=True,
+        product__category__is_active=True).select_related("product"))
     for sub in subs:
         p = sub.product
         Notification.objects.create(
@@ -455,7 +458,8 @@ _NET_UNITS = Sum(F("quantity") - F("refunded_quantity"))
 
 
 def _real_items(since=None, until=None):
-    items = OrderItem.objects.filter(order__is_demo=False, order__status__in=PAID_STATUSES)
+    items = OrderItem.objects.filter(order__is_demo=False, order__status__in=PAID_STATUSES,
+                                    product__is_active=True, product__category__is_active=True)
     if since:
         items = items.filter(order__created_at__gte=since)
     if until:
@@ -489,34 +493,55 @@ def top_trends(limit=12, window=7) -> list:
 
 
 def top_new(limit=12):
-    return Product.objects.filter(is_active=True).order_by("-created_at", "-id")[:limit]
+    return Product.objects.filter(is_active=True, category__is_active=True).order_by("-created_at", "-id")[:limit]
 
 
 # ---------------------------------------------------------------------
 # SEARCH - 3 entity types, all three languages
 # ---------------------------------------------------------------------
+def _text_search(queryset, fields, text, collation=None, extra=None):
+    """Use Unicode case conversion when PostgreSQL's database locale is C."""
+    aliases = {}
+    match = Q()
+    needle = Collate(Value(text), collation) if collation else text
+    for index, field in enumerate(fields):
+        lookup = field
+        if collation:
+            lookup = f"search_text_{index}"
+            aliases[lookup] = Collate(field, collation)
+        match |= Q(**{f"{lookup}__icontains": needle})
+    if extra is not None:
+        match |= extra
+    return queryset.alias(**aliases).filter(match)
+
+
 def search(text: str, user=None) -> dict:
     text = (text or "").strip()
     if not text:
         return {"products": [], "categories": [], "orders": []}
 
-    name_match = Q(name_en__icontains=text) | Q(name_ru__icontains=text) | Q(name_kk__icontains=text)
-
-    products = (
-        Product.objects.filter(is_active=True)
-        .filter(name_match | Q(sku__icontains=text) | Q(description_en__icontains=text)
-                | Q(description_ru__icontains=text))
-        .select_related("category")[:20]
-    )
-    categories = Category.objects.filter(is_active=True).filter(name_match)[:10]
+    collation = None
+    if connection.vendor == "postgresql":
+        # ICU is optional in PostgreSQL builds. Prefer its deterministic Unicode
+        # collation when available; otherwise retain the database's native one.
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM pg_collation WHERE collname = %s "
+                           "AND collprovider = 'i' AND collisdeterministic", ["und-x-icu"])
+            if cursor.fetchone():
+                collation = "und-x-icu"
+    names = ("name_en", "name_ru", "name_kk")
+    products = _text_search(
+        Product.objects.filter(is_active=True, category__is_active=True),
+        (*names, "sku", "description_en", "description_ru", "description_kk"), text, collation,
+    ).select_related("category")[:20]
+    categories = _text_search(Category.objects.filter(is_active=True), names, text, collation)[:10]
 
     # Orders: a customer sees only own orders, staff sees all
     orders = Order.objects.none()
     if user is not None:
-        order_q = Q(shipping_address__icontains=text) | Q(user__username__icontains=text)
-        if text.isdigit():
-            order_q |= Q(pk=int(text))
-        orders = Order.objects.filter(order_q)
+        order_id = Q(pk=int(text)) if text.isdecimal() and len(text) <= 19 and int(text) < 2**63 else None
+        orders = _text_search(Order.objects.all(), ("shipping_address", "user__username"),
+                              text, collation, extra=order_id)
         if user.role == "customer":
             orders = orders.filter(user=user)
         orders = orders[:10]

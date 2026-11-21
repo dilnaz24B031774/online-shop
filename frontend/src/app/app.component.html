@@ -7,14 +7,11 @@
     </span>
 
     <div class="tools">
-<<<<<<< HEAD
       <button type="button" class="city" (click)="region.ask()" [attr.title]="i.t('region.change')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
         <span>{{ region.current() ? i.pick(region.current()) : i.t('region.pick') }}</span>
       </button>
 
-=======
->>>>>>> origin/dilyara-changes
       <div class="langs" role="group" aria-label="Language">
         @for (l of langs; track l.code) {
           <button type="button" [class.on]="i.lang() === l.code" (click)="i.use(l.code)">{{ l.label }}</button>
@@ -112,13 +109,10 @@
       }
       <span class="spacer"></span>
       <!-- "My orders" is not a separate tab anymore: it lives inside the profile -->
-<<<<<<< HEAD
       @if (auth.isLoggedIn()) {
         <a routerLink="/settings" routerLinkActive="active" class="strong">{{ i.t('nav.settings') }}</a>
         <a routerLink="/complaints" routerLinkActive="active" class="strong">{{ i.t('nav.complaints') }}</a>
       }
-=======
->>>>>>> origin/dilyara-changes
       @if (auth.user()?.role === 'admin' || auth.user()?.role === 'manager') {
         <a [href]="adminUrl" target="_blank" rel="noopener" class="strong">{{ i.t('nav.admin') }}</a>
       }
@@ -168,10 +162,6 @@
     <span>© {{ year }} Sauda</span>
     <span>{{ i.t('footer.text') }}</span>
   </div>
-<<<<<<< HEAD
 </footer>
 <app-region-modal />
 }
-=======
-</footer>
->>>>>>> origin/dilyara-changes
