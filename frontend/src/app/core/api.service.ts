@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Address, AppNotification, CardInput, Cart, Category, City, Order, Product, ProductDetail, ProductFilters, PromoCheck, QrInfo, Review, SavedCard, SearchResult, Tokens, TopItem, User,
+  Address, AppNotification, CardInput, Cart, Category, City, Complaint, ComplaintInput, Order, Product, ProductDetail, ProductFilters,
+  PromoCheck, QrInfo, Review, SavedCard, SearchResult, Tokens, TopItem, User,
 } from './models';
 
 /** The backend is reached through the same address as the website: ng serve forwards /api to Django
@@ -36,6 +37,23 @@ export interface LoginFailure {
   retry_after?: number;
 }
 
+export interface TelegramStatus {
+  configured: boolean;
+  linked: boolean;
+  username: string | null;
+  linked_at: string | null;
+}
+
+export interface TelegramLink {
+  link_url: string;
+  expires_in: number;
+}
+
+export interface TelegramResetChallenge {
+  challenge_id: string;
+  expires_in: number;
+}
+
 /** Every request to the backend goes through this service. */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -66,12 +84,15 @@ export class ApiService {
     return this.http.get<ProductDetail>(`${API_URL}/products/${id}/`);
   }
 
-  addReview(productId: number, rating: number, comment: string, photos: File[] = []): Observable<Review> {
+  addReview(productId: number, rating: number, comment: string, photos: File[] = [], orderItemId?: number): Observable<Review> {
     const url = `${API_URL}/products/${productId}/reviews/`;
-    if (!photos.length) return this.http.post<Review>(url, { rating, comment });
+    if (!photos.length) {
+      return this.http.post<Review>(url, { rating, comment, ...(orderItemId !== undefined ? { order_item_id: orderItemId } : {}) });
+    }
     const form = new FormData();            // files go as multipart/form-data
     form.append('rating', String(rating));
     form.append('comment', comment);
+    if (orderItemId !== undefined) form.append('order_item_id', String(orderItemId));
     photos.forEach(f => form.append('photos', f, f.name));
     return this.http.post<Review>(url, form);
   }
@@ -87,6 +108,34 @@ export class ApiService {
 
   securityChallenge(): Observable<LoginChallenge> {
     return this.http.get<LoginChallenge>(`${API_URL}/auth/challenge/`, { params: { purpose: 'login' } });
+  }
+
+  requestPasswordReset(email: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/password-reset/`, { email });
+  }
+
+  telegramStatus(): Observable<TelegramStatus> {
+    return this.http.get<TelegramStatus>(`${API_URL}/me/telegram/`);
+  }
+
+  linkTelegram(currentPassword: string): Observable<TelegramLink> {
+    return this.http.post<TelegramLink>(`${API_URL}/me/telegram/link/`, { current_password: currentPassword });
+  }
+
+  unlinkTelegram(currentPassword: string): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/me/telegram/unlink/`, { current_password: currentPassword });
+  }
+
+  requestTelegramPasswordReset(identifier: string): Observable<TelegramResetChallenge> {
+    return this.http.post<TelegramResetChallenge>(`${API_URL}/auth/telegram/password-reset/`, { identifier });
+  }
+
+  confirmTelegramPasswordReset(data: { challenge_id: string; code: string; new_password: string; new_password_confirm: string }): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/telegram/password-reset/confirm/`, data);
+  }
+
+  confirmPasswordReset(data: { uid: string; token: string; new_password: string; new_password_confirm: string }): Observable<{ detail: string }> {
+    return this.http.post<{ detail: string }>(`${API_URL}/auth/password-reset/confirm/`, data);
   }
 
   register(data: { username: string; email: string; password: string; first_name?: string }) {
@@ -105,12 +154,28 @@ export class ApiService {
     return this.http.patch<User>(`${API_URL}/me/`, data);
   }
 
+  changePassword(data: { current_password: string; new_password: string; new_password_confirm: string }): Observable<Tokens & { detail: string }> {
+    return this.http.post<Tokens & { detail: string }>(`${API_URL}/me/password/`, data);
+  }
+
   addresses(): Observable<Address[]> {
     return this.http.get<Address[]>(`${API_URL}/addresses/`);
   }
 
   addAddress(data: Partial<Address>): Observable<Address> {
     return this.http.post<Address>(`${API_URL}/addresses/`, data);
+  }
+
+  complaints(): Observable<Complaint[]> {
+    return this.http.get<Complaint[]>(`${API_URL}/complaints/`);
+  }
+
+  createComplaint(data: ComplaintInput): Observable<Complaint> {
+    return this.http.post<Complaint>(`${API_URL}/complaints/`, data);
+  }
+
+  complaint(id: number): Observable<Complaint> {
+    return this.http.get<Complaint>(`${API_URL}/complaints/${id}/`);
   }
 
   // cart and orders

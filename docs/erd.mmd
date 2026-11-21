@@ -1,5 +1,7 @@
 erDiagram
     CITIES |o--o{ USERS : "city"
+    USERS ||--o| TELEGRAM_ACCOUNTS : "user"
+    USERS |o--o{ TELEGRAM_CHALLENGES : "user"
     USERS ||--o{ ADDRESSES : "user"
     CATEGORIES ||--o{ PRODUCTS : "category"
     PRODUCTS ||--o{ PRODUCT_IMAGES : "product"
@@ -14,6 +16,7 @@ erDiagram
     SAVED_CARDS |o--o{ PAYMENTS : "saved_card"
     USERS ||--o{ REVIEWS : "user"
     PRODUCTS ||--o{ REVIEWS : "product"
+    ORDER_ITEMS |o--o| REVIEWS : "order_item"
     REVIEWS ||--o{ REVIEW_PHOTOS : "review"
     USERS ||--o{ NOTIFICATIONS : "user"
     ORDERS |o--o{ NOTIFICATIONS : "order"
@@ -28,6 +31,9 @@ erDiagram
     PROMO_CODES ||--o{ PROMO_REDEMPTIONS : "promo"
     ORDERS ||--o| PROMO_REDEMPTIONS : "order"
     PAYMENTS ||--o| QR_PAYMENTS : "payment"
+    USERS ||--o{ COMPLAINTS : "user"
+    ORDERS |o--o{ COMPLAINTS : "order"
+    USERS |o--o{ COMPLAINTS : "responded_by"
 
     CITIES {
         bigint id PK
@@ -55,6 +61,25 @@ erDiagram
         varchar(20) role
         varchar(2) preferred_language
         bigint city_id FK
+        varchar(3) preferred_currency
+    }
+    TELEGRAM_ACCOUNTS {
+        bigint id PK
+        bigint user_id FK,UK
+        positivebigintegerfield telegram_id UK
+        varchar(64) username
+        timestamptz linked_at
+    }
+    TELEGRAM_CHALLENGES {
+        varchar(64) key PK
+        bigint user_id FK
+        varchar(8) purpose
+        varchar(64) password_digest
+        varchar(64) code_digest
+        timestamptz expires_at
+        smallint attempts
+        timestamptz consumed_at
+        timestamptz created_at
     }
     ADDRESSES {
         bigint id PK
@@ -168,6 +193,7 @@ erDiagram
         bigint id PK
         bigint user_id FK
         bigint product_id FK
+        bigint order_item_id FK,UK
         smallint rating
         text comment
         timestamptz created_at
@@ -246,4 +272,18 @@ erDiagram
         timestamptz expires_at
         timestamptz paid_at
         varchar(80) paid_device
+    }
+    COMPLAINTS {
+        bigint id PK
+        bigint user_id FK
+        bigint order_id FK
+        varchar(20) category
+        varchar(150) subject
+        text message
+        varchar(20) status
+        text staff_response
+        bigint responded_by_id FK
+        timestamptz replied_at
+        timestamptz created_at
+        timestamptz updated_at
     }

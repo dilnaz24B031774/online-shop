@@ -8,11 +8,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
-    ReviewPhoto,
-    City,
-    ProductImage,
-    Address, CartItem, Category, Favorite, Notification, Order, OrderItem, Payment, Product, PromoCode,
-    PromoRedemption, Refund, Review, SavedCard, StockSubscription, User,
+    Address, CartItem, Category, City, Complaint, Favorite, Notification, Order, OrderItem, Payment, Product,
+    ProductImage, PromoCode, PromoRedemption, Refund, Review, ReviewPhoto, SavedCard, StockSubscription, User,
 )
 from .roles import MANAGER_GROUP, ROLE_CHOICES, sync_role_access
 
@@ -294,12 +291,15 @@ class CartItemAdmin(admin.ModelAdmin):
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ("product", "user", "rating", "comment", "created_at")
+    list_display = ("product", "user", "order_item", "rating", "comment", "created_at")
     list_filter = ("rating", "created_at")
     search_fields = ("user__username", "product__name_en", "product__name_ru", "comment")
-    list_select_related = ("user", "product")
+    list_select_related = ("user", "product", "order_item__order")
     readonly_fields = ("created_at",)
-    raw_id_fields = ("user", "product")
+    raw_id_fields = ("user", "product", "order_item")
+
+    def get_readonly_fields(self, request, obj=None):
+        return ("user", "product", "order_item", "created_at") if obj else ("created_at",)
 
 
 @admin.register(Notification)
@@ -320,6 +320,39 @@ class PromoCodeAdmin(admin.ModelAdmin):
     list_editable = ("is_active",)
     search_fields = ("code",)
     readonly_fields = ("used_count", "created_at")
+
+
+@admin.register(Complaint)
+class ComplaintAdmin(admin.ModelAdmin):
+    """The staff inbox is the only write path, preserving response validation."""
+
+    list_display = ("id", "subject", "user", "category", "status", "created_at", "process_complaint")
+    list_filter = ("status", "category", "created_at")
+    search_fields = ("subject", "message", "user__username")
+    list_select_related = ("user", "order", "responded_by")
+    list_per_page = 25
+    actions = None
+    fields = (
+        "process_complaint", "user", "order", "category", "subject", "message", "status",
+        "staff_response", "responded_by", "replied_at", "created_at", "updated_at",
+    )
+    readonly_fields = fields
+
+    @admin.display(description="Обработка")
+    def process_complaint(self, obj):
+        return format_html(
+            '<a href="{}">Открыть обращение в панели</a>',
+            reverse("staff_complaint_detail", args=[obj.pk]),
+        )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Favorite)

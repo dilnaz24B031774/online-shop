@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { CartService } from '../core/cart.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Product } from '../core/models';
 import { ProductImageComponent } from './product-image.component';
 import { StarsComponent } from './stars.component';
@@ -34,7 +35,7 @@ import { NotifyButtonComponent } from './notify-button.component';
         <span class="meta">{{ p.brand || i.pick(p.category) }}</span>
         <h3><a [routerLink]="['/product', p.id]">{{ i.pick(p) }}</a></h3>
         <app-stars [value]="p.avg_rating" [count]="p.review_count" />
-        <span class="price">\${{ p.price }}</span>
+        <span class="price">{{ money.format(p.price) }}</span>
         @if (p.stock_quantity === 0) {
           <span class="sold">{{ i.t('product.soldOut') }}</span>
           <app-notify-button [productId]="p.id" />
@@ -96,6 +97,7 @@ export class ProductCardComponent {
   /** position in the best-seller list (optional) */
   readonly rank = input<number | null>(null);
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   readonly cart = inject(CartService);
   private auth = inject(AuthService);
   private router = inject(Router);

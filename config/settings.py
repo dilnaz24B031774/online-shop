@@ -192,6 +192,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    # Invalidate tokens from other sessions after the user changes a password.
+    "CHECK_REVOKE_TOKEN": True,
+    "TOKEN_REFRESH_SERIALIZER": "shop.serializers.PasswordAwareTokenRefreshSerializer",
 }
 
 # The Angular dev server runs on port 4200
@@ -199,6 +202,28 @@ CORS_ALLOWED_ORIGINS = ["http://localhost:4200", "http://127.0.0.1:4200"]
 # DEBUG: the website opened from a phone in the same Wi-Fi (http://192.168.x.x:4200, http://10.x.x.x:4200 ...)
 CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://[\w.-]+:4200$"] if DEBUG else []
 CORS_EXPOSE_HEADERS = ["Retry-After"]
+
+# SMTP settings can be supplied in .env or exported before starting Django.
+# Without EMAIL_HOST, the console backend only prints local recovery emails.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:4200")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", (
+    "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+    else "django.core.mail.backends.console.EmailBackend"
+))
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in ("true", "1", "yes")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false" if EMAIL_USE_SSL else "true").lower() in ("true", "1", "yes")
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
+                      or EMAIL_HOST_USER or "Sauda <noreply@localhost>")
+PASSWORD_RESET_TIMEOUT = 3600
+PASSWORD_RESET_RATE_WINDOW = 900
+PASSWORD_RESET_IP_LIMIT = 10
+PASSWORD_RESET_EMAIL_LIMIT = 3
+PASSWORD_RESET_CONFIRM_LIMIT = 20
 
 # Shared by the storefront login and the employee/admin login.
 LOGIN_MAX_FAILURES = 5
@@ -225,3 +250,8 @@ SAVED_CARD_RECENT_DAYS = int(os.environ.get("SAVED_CARD_RECENT_DAYS", "90"))
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 REVIEW_PHOTO_MAX_MB = 5
+
+# Telegram recovery uses a dedicated bot. Keep its token only in private .env.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+TELEGRAM_REQUEST_TIMEOUT = 10

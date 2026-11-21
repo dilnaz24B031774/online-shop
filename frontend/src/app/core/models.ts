@@ -1,3 +1,5 @@
+import type { CurrencyCode } from './currency.service';
+
 // Types that match the JSON from the Django REST API (shop/serializers.py)
 
 export interface Category {
@@ -29,6 +31,7 @@ export interface Product {
 
 export interface Review {
   id: number;
+  user_id: number;
   username: string;
   rating: number;
   comment: string;
@@ -36,9 +39,23 @@ export interface Review {
   photos?: string[];   // /media/reviews/... , up to 3
 }
 
+export interface ReviewPurchase {
+  order_item_id: number;
+  order_id: number;
+  purchased_at: string;
+}
+
+export interface ReviewEligibility {
+  can_review: boolean;
+  remaining_purchases: number;
+  reason: 'login_required' | 'purchase_required' | 'review_exists' | null;
+  purchases: ReviewPurchase[];
+}
+
 export interface ProductDetail extends Product {
   reviews: Review[];
   images?: string[];   // main photo first, then the gallery
+  review_eligibility: ReviewEligibility;
 }
 
 export interface User {
@@ -50,6 +67,7 @@ export interface User {
   phone: string;
   role: 'customer' | 'manager' | 'admin';
   preferred_language: 'en' | 'ru' | 'kk';
+  preferred_currency: CurrencyCode;
   city?: City | null;
 }
 
@@ -203,4 +221,28 @@ export interface PromoCheck {
   subtotal: string;
   discount: string;
   total: string;
+}
+
+
+export type ComplaintCategory = 'product' | 'delivery' | 'payment' | 'service' | 'other';
+export type ComplaintStatus = 'new' | 'in_progress' | 'resolved';
+
+export interface Complaint {
+  id: number;
+  order: number | null;
+  category: ComplaintCategory;
+  subject: string;
+  message: string;
+  status: ComplaintStatus;
+  staff_response: string;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComplaintInput {
+  order: number | null;
+  category: ComplaintCategory;
+  subject: string;
+  message: string;
 }

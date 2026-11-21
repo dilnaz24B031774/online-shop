@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { SearchResult } from '../core/models';
 import { ProductCardComponent } from '../shared/product-card.component';
 
@@ -50,7 +51,7 @@ import { ProductCardComponent } from '../shared/product-card.component';
                   <strong>{{ i.t('orders.order') }} #{{ o.id }}</strong>
                   <span class="muted">{{ o.created_at | date: 'mediumDate' }}</span>
                   <span>{{ i.t('status.' + o.status) }}</span>
-                  <strong>\${{ o.total_amount }}</strong>
+                  <strong>{{ money.format(o.total_amount) }}</strong>
                 </a>
               }
             </div>
@@ -77,6 +78,7 @@ import { ProductCardComponent } from '../shared/product-card.component';
 })
 export class SearchComponent {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   readonly q = input<string>('');
   readonly result = signal<SearchResult | null>(null);

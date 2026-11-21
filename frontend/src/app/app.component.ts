@@ -9,6 +9,7 @@ import { RegionService } from './core/region.service';
 import { RegionModalComponent } from './shared/region-modal.component';
 import { AuthService } from './core/auth.service';
 import { CartService } from './core/cart.service';
+import { CurrencyService } from './core/currency.service';
 import { I18nService, LANGS } from './core/i18n.service';
 import { Category } from './core/models';
 import { AssistantComponent } from './shared/assistant.component';
@@ -28,6 +29,7 @@ export class AppComponent implements OnInit {
   readonly region = inject(RegionService);
   readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);   // created here, so the saved theme is applied on start
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   private router = inject(Router);
   /** /pay/... is the "bank app" on the phone: no shop header, footer or assistant there */

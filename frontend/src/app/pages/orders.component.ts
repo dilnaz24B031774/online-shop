@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Order } from '../core/models';
 import { CountdownComponent } from '../shared/countdown.component';
 import { PayLinkService } from '../core/pay-link.service';
@@ -50,8 +51,8 @@ import { PayLinkService } from '../core/pay-link.service';
                     <a [routerLink]="['/product', it.product.id]">{{ i.pick(it.product) }}</a>
                     @if (it.refunded_quantity) { <small class="returned">{{ i.t('refund.returned', { n: it.refunded_quantity }) }}</small> }
                   </span>
-                  <span class="muted">× {{ it.quantity }} · \${{ it.unit_price }}</span>
-                  <span>\${{ it.line_total }}</span>
+                  <span class="muted">× {{ it.quantity }} · {{ money.format(it.unit_price) }}</span>
+                  <span>{{ money.format(it.line_total) }}</span>
                 </li>
               }
             </ul>
@@ -62,8 +63,10 @@ import { PayLinkService } from '../core/pay-link.service';
                 @if (o.installment_months) { · 0-0-{{ o.installment_months }} }
                 @if (isExpired(o)) { <span class="pay-badge p-failed">{{ i.t('status.unpaid') }}</span> }
                 @else if (o.payment_status) { <span class="pay-badge" [class]="'pay-badge p-' + o.payment_status">{{ i.t('status.' + o.payment_status) }}</span> }</span>
-              <strong class="sum">\${{ o.total_amount }}</strong>
+              <strong class="sum">{{ money.format(o.total_amount) }}</strong>
             </footer>
+
+            <div class="complaint-row"><a routerLink="/complaints" [queryParams]="{ order: o.id }">{{ i.t('complaints.orderLink') }} <span aria-hidden="true">↗</span></a></div>
 
             @if (o.refunds?.length) {
               <div class="refunds">
@@ -76,7 +79,7 @@ import { PayLinkService } from '../core/pay-link.service';
                   @for (r of o.refunds; track r.id) {
                     <li>
                       <span>{{ i.pick(r) }} × {{ r.quantity }} <small class="muted">· {{ i.t('refund.reason.' + r.reason) }} · {{ r.created_at | date: 'd MMM, HH:mm' }}</small></span>
-                      <b>−\${{ r.amount }}</b>
+                      <b>−{{ money.format(r.amount) }}</b>
                     </li>
                   }
                 </ul>
@@ -103,7 +106,7 @@ import { PayLinkService } from '../core/pay-link.service';
             @if (o.status === 'paid' || o.status === 'pending') {
               @if (confirmId() === o.id) {
                 <div class="confirm" role="alert">
-                  <p>{{ i.t('orders.cancelAsk', { n: o.id, sum: o.total_amount }) }}</p>
+                  <p>{{ i.t('orders.cancelAsk', { n: o.id, sum: money.format(o.total_amount) }) }}</p>
                   <div class="confirm-actions">
                     <button type="button" class="btn danger" (click)="cancel(o)" [disabled]="busy()">{{ i.t('orders.cancelYes') }}</button>
                     <button type="button" class="btn btn-ghost" (click)="confirmId.set(null)">{{ i.t('orders.cancelNo') }}</button>
@@ -155,6 +158,8 @@ import { PayLinkService } from '../core/pay-link.service';
     .p-paid { background: #e7f3e9; color: #267247; } .p-pending { background: #fff3dc; color: #956111; }
     .p-failed { background: #fbecea; color: #aa4942; } .p-refunded { background: #e8eff9; color: #466b9b; }
     .order { margin-bottom: 1.2rem; }
+    .complaint-row { margin-top: .8rem; font-size: .85rem; }
+    .complaint-row a { display: inline-flex; align-items: center; gap: .4rem; }
     header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
     h3 { font-size: 1.25rem; margin-bottom: .2rem; }
     .status { font-weight: 700; font-size: .85rem; padding: .35em .9em; border-radius: 999px; white-space: nowrap; }
@@ -194,6 +199,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   private qrPoll?: ReturnType<typeof setInterval>;
 
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   readonly orders = signal<Order[] | null>(null);
   readonly error = signal(false);
@@ -251,7 +257,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
     this.api.cancelOrder(o.id).subscribe({
       next: updated => {
         this.orders.update(list => (list ?? []).map(x => (x.id === updated.id ? updated : x)));
-        this.message.set(this.i.t('orders.cancelled', { n: updated.id, sum: updated.total_amount }));
+        this.message.set(this.i.t('orders.cancelled', { n: updated.id, sum: this.money.format(updated.total_amount) }));
         this.confirmId.set(null);
         this.busy.set(false);
       },

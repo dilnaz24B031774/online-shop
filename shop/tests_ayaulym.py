@@ -205,6 +205,8 @@ class CheckoutRulesTests(BaseShopTest):
 class ReviewAndSearchTests(BaseShopTest):
 
     def test_second_review_for_same_product_is_refused(self):
+        self.auth.post("/api/cart/", {"product_id": self.ball.id, "quantity": 1}, format="json")
+        self.assertEqual(self.checkout().status_code, 201)
         url = f"/api/products/{self.ball.id}/reviews/"
         self.assertEqual(self.auth.post(url, {"rating": 5, "comment": "Good"}, format="json").status_code, 201)
         self.assertEqual(self.auth.post(url, {"rating": 4, "comment": "Again"}, format="json").status_code, 400)

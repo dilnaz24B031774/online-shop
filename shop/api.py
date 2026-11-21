@@ -5,7 +5,7 @@ Login uses JWT tokens: the frontend sends  Authorization: Bearer <access token>
 from django.core.exceptions import ValidationError as DjangoValidationError
 from decimal import Decimal, InvalidOperation
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Avg, Count, Max, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -15,12 +15,15 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import payments, services
-from .models import Address, CartItem, Category, City, Favorite, Notification, Order, Product, Review, StockSubscription
+from .models import (
+    Address, CartItem, Category, City, Favorite, Notification, Order, OrderItem, Product, Review, StockSubscription, User,
+)
+from .review_rules import ReviewPurchaseSerializer, eligible_purchases, review_eligibility
 from .serializers import (
     AddressSerializer, CartItemSerializer, CategorySerializer, CitySerializer, NotificationSerializer, OrderSerializer,
     SavedCardSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
-    UserSerializer,
+    ChangePasswordSerializer, UserSerializer,
 )
 
 
@@ -122,7 +125,12 @@ def product_filters(request):
 @permission_classes([AllowAny])
 def product_detail(request, pk):
     product = get_object_or_404(_products().prefetch_related("reviews__user", "reviews__photos", "images"), pk=pk)
-    return Response(ProductDetailSerializer(product).data)
+    data = ProductDetailSerializer(product).data
+    data["review_eligibility"] = review_eligibility(request.user, product)
+    response = Response(data)
+    # Eligibility contains the current buyer's unreviewed purchases.
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @api_view(["GET"])
@@ -157,8 +165,8 @@ def search(request):
 @permission_classes([IsAuthenticated])
 def add_review(request, pk):
     product = get_object_or_404(Product, pk=pk, is_active=True)
-    if Review.objects.filter(user=request.user, product=product).exists():
-        return Response({"detail": "You have already reviewed this product."}, status=400)
+    duplicate = {"code": "review_exists", "detail": "You have already reviewed this purchase."}
+    purchase_required = {"code": "purchase_required", "detail": "Buy and pay for this product before leaving a review."}
     serializer = ReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     photos = request.FILES.getlist("photos")      # sent as multipart/form-data, up to 3
@@ -166,9 +174,42 @@ def add_review(request, pk):
         services.validate_review_photos(photos)
     except services.ReviewPhotoError as e:
         return Response({"photos": [str(e)]}, status=400)
+    purchase_input = ReviewPurchaseSerializer(data=request.data)
+    purchase_input.is_valid(raise_exception=True)
+    selected_id = purchase_input.validated_data.get("order_item_id")
+    if selected_id is not None:
+        purchase = OrderItem.objects.filter(pk=selected_id, order__user=request.user, product=product).first()
+    else:
+        purchases = eligible_purchases(request.user, product)
+        purchase = purchases.filter(review__isnull=True).order_by("order__created_at", "pk").first()
+        if purchase is None and purchases.exists():
+            return Response(duplicate, status=400)
+    if purchase is None:
+        return Response(purchase_required, status=403)
+
     with transaction.atomic():
-        review = serializer.save(user=request.user, product=product)
-        services.add_review_photos(review, photos)
+        # Cancellation and fulfillment acquire locks in the same order. Check
+        # payment/state again after locking, rather than trusting an earlier
+        # product page or a purchase selected before a concurrent cancellation.
+        order = Order.objects.select_for_update().filter(pk=purchase.order_id, user=request.user).first()
+        if order is None:
+            return Response(purchase_required, status=403)
+        purchase = OrderItem.objects.select_for_update().filter(pk=purchase.pk, order=order, product=product).first()
+        if purchase is None:
+            return Response(purchase_required, status=403)
+        if not eligible_purchases(request.user, product).filter(pk=purchase.pk).exists():
+            return Response(purchase_required, status=403)
+        if Review.objects.filter(order_item=purchase).exists():
+            return Response(duplicate, status=400)
+        try:
+            with transaction.atomic():
+                review = serializer.save(user=request.user, product=product, order_item=purchase)
+                services.add_review_photos(review, photos)
+        except IntegrityError:
+            # Also handle writes outside this API racing the unique order line.
+            if Review.objects.filter(order_item=purchase).exists():
+                return Response(duplicate, status=400)
+            raise
     return Response(ReviewSerializer(review).data, status=201)
 
 
@@ -202,6 +243,23 @@ def me(request):
         s.is_valid(raise_exception=True)
         s.save()
     return Response(UserSerializer(request.user).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    # Check the current password while locking the row, so concurrent changes
+    # cannot both validate the same old password.
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        serializer = ChangePasswordSerializer(data=request.data, context={"user": user})
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        tokens = _tokens(user)
+    response = Response({"detail": "Password updated successfully.", **tokens})
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @api_view(["GET", "POST"])

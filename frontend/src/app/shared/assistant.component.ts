@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Product } from '../core/models';
 import { ProductImageComponent } from './product-image.component';
 
@@ -41,7 +42,7 @@ interface ChatMessage {
                     <a class="item" [routerLink]="['/product', p.id]">
                       <span class="thumb"><app-product-image [product]="p" /></span>
                       <span class="name">{{ i.pick(p) }}</span>
-                      <strong>\${{ p.price }}</strong>
+                      <strong>{{ money.format(p.price) }}</strong>
                     </a>
                   }
                 </div>
@@ -137,6 +138,7 @@ interface ChatMessage {
 })
 export class AssistantComponent {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   private list = viewChild<ElementRef<HTMLElement>>('list');
 

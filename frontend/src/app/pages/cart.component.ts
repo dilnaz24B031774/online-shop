@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { CartService } from '../core/cart.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { ProductImageComponent } from '../shared/product-image.component';
 
 @Component({
@@ -30,7 +31,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
                   </a>
                   <div class="name">
                     <a [routerLink]="['/product', item.product.id]"><strong>{{ i.pick(item.product) }}</strong></a>
-                    <span class="muted">\${{ item.product.price }} · {{ i.pick(item.product.category) }}</span>
+                    <span class="muted">{{ money.format(item.product.price) }} · {{ i.pick(item.product.category) }}</span>
                     <button type="button" class="remove" (click)="setQty(item.product.id, 0)">{{ i.t('cart.remove') }}</button>
                   </div>
                   <div class="stepper">
@@ -39,14 +40,14 @@ import { ProductImageComponent } from '../shared/product-image.component';
                     <button type="button" (click)="setQty(item.product.id, item.quantity + 1)"
                             [disabled]="item.quantity >= item.product.stock_quantity" aria-label="+">+</button>
                   </div>
-                  <strong class="line">\${{ item.line_total }}</strong>
+                  <strong class="line">{{ money.format(item.line_total) }}</strong>
                 </article>
               }
             </div>
 
             <aside class="summary panel">
               <div class="sum-row"><span>{{ c.count }} {{ i.t('cart.items') }}</span></div>
-              <div class="sum-row total"><span>{{ i.t('cart.total') }}</span><strong>\${{ c.total }}</strong></div>
+              <div class="sum-row total"><span>{{ i.t('cart.total') }}</span><strong>{{ money.format(c.total) }}</strong></div>
               <a routerLink="/checkout" class="btn btn-sun btn-block">{{ i.t('cart.checkout') }}</a>
             </aside>
           </div>
@@ -85,6 +86,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
 })
 export class CartComponent implements OnInit {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   readonly cart = inject(CartService);
   readonly error = signal('');
 

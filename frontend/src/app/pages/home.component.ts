@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { ApiService } from '../core/api.service';
 import { I18nService } from '../core/i18n.service';
+import { CurrencyService } from '../core/currency.service';
 import { Category, Product } from '../core/models';
 import { ProductCardComponent } from '../shared/product-card.component';
 import { ProductImageComponent } from '../shared/product-image.component';
@@ -32,7 +33,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
           <div class="text">
             <span class="tag">{{ i.t('hero2.tag') }}</span>
             <h2>{{ i.t('hero2.title') }}</h2>
-            <span class="btn btn-sun">{{ i.t('hero2.cta') }} · \${{ p.price }}</span>
+            <span class="btn btn-sun">{{ i.t('hero2.cta') }} · {{ money.format(p.price) }}</span>
           </div>
           <div class="pic"><app-product-image [product]="p" /></div>
         </a>
@@ -242,6 +243,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
 })
 export class HomeComponent implements OnInit {
   readonly i = inject(I18nService);
+  readonly money = inject(CurrencyService);
   private api = inject(ApiService);
 
   readonly categories = signal<Category[]>([]);

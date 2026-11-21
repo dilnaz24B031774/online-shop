@@ -86,26 +86,152 @@ Password for all: `Shop2026!`
 ## Features
 
 - Registration and login with JWT tokens, password rules (min 8 chars, a digit, a capital letter)
+- Customer settings at `/settings`: username, first and last name, phone, display currency and password changes
+- Private complaints book at `/complaints`: customers submit complaints, optionally link their own order, and see staff replies and progress
 - Catalogue in 3 languages (EN / RU / KK), search by products, categories and own orders
 - **Filters:** price from–to, brand, rating, only in stock; sort by price, name, rating, popularity
 - Cart and checkout in one database transaction (two people cannot buy the last item)
 - **Promo codes** with a percent, minimum order, dates and a usage limit
 - Cancel an order: stock comes back, payment becomes refunded, promo code use comes back
-- Reviews with rating 1–5
+- Reviews with rating 1–5 after a paid purchase: one review per product in each order
+- Password recovery through linked Telegram with a one-use code, or an email link valid for one hour
 - **Notifications** (bell in the header): order paid / shipped / cancelled, Black Friday
 - Shop assistant chat (works without internet)
 - Staff panel `/staff/`: dashboard, products, categories, orders, users
 - Roles: customer, manager, admin
 - Login protection: after 3 wrong tries a small math check, after 5 — block for 5 minutes
 
+Settings are saved to the customer's account. Changing a password requires the current
+password and confirmation; other sessions are signed out while the current session
+receives new tokens. Currency selection applies to the catalogue, cart and orders.
+Amounts are stored in USD; this study project uses fixed demonstration rates for
+display (1 USD = 500 KZT / 0.92 EUR / 90 RUB), rather than live exchange rates.
+
+## Password recovery
+
+### Telegram
+
+First connect Telegram in **Account settings** while you can still sign in:
+enter your current shop password, open the generated bot link, and press
+**Start** in Telegram. Return to settings and check that the account is linked.
+A Telegram username entered as plain text is never enough to prove ownership.
+
+Later, choose Telegram on **Forgot password?**, enter your shop username or
+email, and read the six-digit code in the previously linked bot chat. Enter the
+code and your new password on the website. Codes expire after ten minutes,
+allow up to five incorrect attempts, and can be used once. No shop password is
+sent to Telegram. A code from Telegram works even if you read it on your phone
+while the local shop is open on your computer.
+
+Create a dedicated bot with [@BotFather](https://t.me/BotFather) using `/newbot`,
+as described in [Telegram's official tutorial](https://core.telegram.org/bots/tutorial#obtain-your-bot-token).
+Put its credentials only in the private `.env` file:
+
+```dotenv
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_BOT_USERNAME=your_bot_username
+```
+
+Use the bot's username without `@`. Restart Django after editing `.env`, then
+verify the credentials without sending a message:
+
+```bash
+python3 manage.py check_telegram
+```
+
+Keep the bot listener running in a third terminal alongside the frontend and
+backend, using the same Python environment and database:
+
+```bash
+python3 manage.py run_telegram_bot
+```
+
+The listener uses [Telegram long polling](https://core.telegram.org/bots/api#getupdates),
+so local development does not need a public HTTPS webhook. It accepts account
+linking only in private bot chats. If the bot already has a webhook, the command
+stops and leaves that webhook untouched; use a separate development bot instead.
+Run only one listener for each bot token. Stop it with Ctrl+C.
+
+### Email (optional)
+
+Choose **Forgot password?** on `/login` and enter the email used for the account.
+Open the emailed link, enter a new password twice, then sign in again. Links expire
+after one hour and stop working after a successful reset. Resetting a password
+also signs out existing sessions. The response is the same for registered and
+unknown emails; requests are limited per source and email address.
+
+Django automatically reads the private `.env` file in the project root. Exported
+environment variables take precedence. If the file is missing, copy `.env.example`
+to `.env`; install updated dependencies with `pip install -r requirements.txt`.
+
+For **Gmail**, fill these two values in `.env`:
+
+```dotenv
+EMAIL_HOST_USER=your-address@gmail.com
+EMAIL_HOST_PASSWORD=your-google-app-password
+```
+
+Enable 2-Step Verification for the sending Google account, then create an
+[app password](https://myaccount.google.com/apppasswords). Use that app password,
+not your normal Google password. Keep it only in `.env`, which Git ignores.
+See [Google's app password instructions](https://support.google.com/accounts/answer/185833).
+If Google does not offer app passwords for the account, use an SMTP provider that
+supports application credentials instead.
+
+The template already sets Gmail's `smtp.gmail.com`, port `587`, and TLS.
+`DEFAULT_FROM_EMAIL` defaults to the sending Gmail address when left blank.
+Check the configuration and SMTP authentication without sending an email:
+
+```bash
+python3 manage.py check_email
+```
+
+When that succeeds, **restart the backend after editing `.env`**, then request
+a new recovery email for an account registered in the shop. Check the inbox
+and spam folder.
+
+Recovery reports that email is unavailable when SMTP is not configured or a
+console/file/dummy backend is selected. It also reports connection,
+authentication, and sending failures instead of showing a false success message.
+`EMAIL_BACKEND` can override the automatic SMTP/console selection. For implicit TLS on port 465, set
+`EMAIL_PORT=465`, `EMAIL_USE_SSL=true`, and `EMAIL_USE_TLS=false`.
+Use the website's public HTTPS address for `FRONTEND_URL` when hosting the shop.
+
+Each account can publish **one review per product in each paid order**. Buying
+the same product in another order gives the customer another review. Buying
+multiple units in one order still gives one review. Pending, failed, refunded,
+and cancelled purchases do not unlock the form. Cash-on-delivery purchases
+qualify once delivery and payment are confirmed. When several purchases are
+available, the customer chooses the order in the product's review form.
+
+Each new review is linked to its purchase. The API checks the buyer, product,
+order and payment; a database constraint also rejects duplicate reviews for the
+same purchase, including simultaneous submissions from different tabs.
+Migration `0010_review_order_item` preserves existing reviews and links those
+with a matching earlier paid purchase. Old reviews without a verifiable
+purchase remain in the history and do not use up a later purchase.
+
 ## Database
 
-20 tables. Full description: [`docs/DATABASE.md`](docs/DATABASE.md), ER diagram: [`docs/erd.png`](docs/erd.png),
+25 tables, including `complaints` and two tables for Telegram recovery (`telegram_accounts`, `telegram_challenges`).
+Full description: [`docs/DATABASE.md`](docs/DATABASE.md), ER diagram: [`docs/erd.png`](docs/erd.png),
 every column and rule: [`docs/db_tables.md`](docs/db_tables.md). After changing models run `python3 manage.py db_docs`.
 
 Rules are checked by the database itself (CHECK and UNIQUE constraints), for example:
-price > 0, stock ≥ 0, rating 1–5, one review per user and product,
+price > 0, stock ≥ 0, rating 1–5, one review per purchased order line,
 promo discount 1–90 %, promo used count not more than the limit.
+
+## Complaints book
+
+Customers open `/complaints` from their account, the footer, or an order's problem
+link. A complaint has a subject, category, message, and optional order reference.
+Each customer can read only their own complaints and can link only their own orders.
+
+Employees use `/staff/complaints/` to search and filter complaints, reply, and change
+the status from new to in progress or resolved. Resolving a complaint requires a reply.
+The managed manager group receives view/change complaint permissions after migration;
+other employees need those permissions explicitly. Customer messages are read-only
+for employees, and complaints are not published to other shoppers.
 
 ## Promo codes
 
@@ -133,7 +259,18 @@ Or in Django admin: Users → select users → action "Send Black Friday notific
 | GET | `/api/products/?q=&category=&brand=&min_price=&max_price=&min_rating=&in_stock=1&sort=` | – |
 | GET | `/api/products/filters/` (brands and price range) | – |
 | GET | `/api/products/{id}/`, `/api/categories/`, `/api/search/?q=` | – |
+| POST | `/api/products/{id}/reviews/` `{rating, comment, order_item_id}` | ✔ |
 | POST | `/api/auth/register/`, `/api/auth/login/`, `/api/auth/refresh/` | – |
+| POST | `/api/auth/password-reset/` `{email}` | – |
+| POST | `/api/auth/password-reset/confirm/` `{uid, token, new_password, new_password_confirm}` | – |
+| POST | `/api/auth/telegram/password-reset/` `{identifier}` | – |
+| POST | `/api/auth/telegram/password-reset/confirm/` `{challenge_id, code, new_password, new_password_confirm}` | – |
+| GET/PATCH | `/api/me/` (profile and preferences) | ✔ |
+| POST | `/api/me/password/` `{current_password, new_password, new_password_confirm}` | ✔ |
+| GET | `/api/me/telegram/` (own Telegram link status) | ✔ |
+| POST | `/api/me/telegram/link/`, `/api/me/telegram/unlink/` `{current_password}` | ✔ |
+| GET/POST | `/api/complaints/` (own complaints only) | ✔ |
+| GET | `/api/complaints/{id}/` (owner only) | ✔ |
 | GET/POST | `/api/cart/` | ✔ |
 | POST | `/api/promo/check/` `{code}` | ✔ |
 | POST | `/api/checkout/` `{address_id, method, promo_code}` | ✔ |
@@ -146,8 +283,9 @@ Or in Django admin: Users → select users → action "Send Black Friday notific
 python3 manage.py test shop
 ```
 
-141 tests: database rules, checkout transaction, passwords, refunds, promo codes, filters,
-notifications, staff panel, login protection.
+Tests cover database rules, checkout transactions, passwords, refunds, promo codes,
+filters, notifications, staff permissions, login protection, account settings and
+private complaints.
 
 ## Migrations note
 

@@ -15,6 +15,7 @@ MANAGER_PERMISSIONS = {
     *(f"{action}_{model}" for model in ("product", "category", "review", "notification", "promocode")
       for action in ("add", "change", "delete", "view")),
     "view_order", "change_order", "view_user", "view_payment", "view_address", "view_cartitem",
+    "view_complaint", "change_complaint",
 }
 
 

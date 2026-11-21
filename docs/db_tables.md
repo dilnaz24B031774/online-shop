@@ -42,10 +42,44 @@ Django's user + our fields. The password column stores only a HASH
 | `role` | varchar(20)  |  | нет |
 | `preferred_language` | varchar(2)  |  | нет |
 | `city_id` | bigint → cities | FK | да |
+| `preferred_currency` | varchar(3)  |  | нет |
 
 Правила в базе:
 - **CHECK** `role IN ('customer', 'manager', 'admin')` — user_role_valid
 - **CHECK** `preferred_language IN ('en', 'ru', 'kk')` — user_language_valid
+- **CHECK** `preferred_currency IN ('USD', 'KZT', 'EUR', 'RUB')` — user_currency_valid
+
+## telegram_accounts
+
+A recovery destination verified by a private message to our bot.
+
+| Колонка | Тип | Ключ | Пусто? |
+|---|---|---|---|
+| `id` | bigint  | PK | нет |
+| `user_id` | bigint → users | FK, UK | нет |
+| `telegram_id` | positivebigintegerfield  | UK | нет |
+| `username` | varchar(64)  |  | нет |
+| `linked_at` | timestamptz  |  | нет |
+
+## telegram_challenges
+
+Only HMACs are stored; raw link nonces and recovery codes are ephemeral.
+
+| Колонка | Тип | Ключ | Пусто? |
+|---|---|---|---|
+| `key` | varchar(64)  | PK | нет |
+| `user_id` | bigint → users | FK | да |
+| `purpose` | varchar(8)  |  | нет |
+| `password_digest` | varchar(64)  |  | нет |
+| `code_digest` | varchar(64)  |  | нет |
+| `expires_at` | timestamptz  |  | нет |
+| `attempts` | smallint  |  | нет |
+| `consumed_at` | timestamptz  |  | да |
+| `created_at` | timestamptz  |  | нет |
+
+Правила в базе:
+- **CHECK** `purpose IN ('link', 'reset')` — telegram_challenge_purpose
+- **CHECK** `attempts <= 5` — telegram_challenge_attempts
 
 ## addresses
 
@@ -259,19 +293,19 @@ Payment(id, order, method, amount, status, provider_reference, paid_at, card_bra
 
 ## reviews
 
-Review(id, user, product, rating, comment, created_at)
+Review(id, user, product, order_item, rating, comment, created_at)
 
 | Колонка | Тип | Ключ | Пусто? |
 |---|---|---|---|
 | `id` | bigint  | PK | нет |
 | `user_id` | bigint → users | FK | нет |
 | `product_id` | bigint → products | FK | нет |
+| `order_item_id` | bigint → order_items | FK, UK | да |
 | `rating` | smallint  |  | нет |
 | `comment` | text  |  | нет |
 | `created_at` | timestamptz  |  | нет |
 
 Правила в базе:
-- **UNIQUE** (user, product) — review_one_per_user_product
 - **CHECK** `rating >= 1 AND rating <= 5` — review_rating_1_to_5
 
 ## review_photos
@@ -419,3 +453,26 @@ QrPayment(id, payment, token, created_at, expires_at, paid_at, paid_device)
 Правила в базе:
 - **CHECK** `expires_at > created_at` — qr_expires_after_created
 - **CHECK** `paid_at IS NULL OR (NOT (paid_device = ''))` — qr_paid_has_device
+
+## complaints
+
+Private customer complaints and the shop's response.
+
+| Колонка | Тип | Ключ | Пусто? |
+|---|---|---|---|
+| `id` | bigint  | PK | нет |
+| `user_id` | bigint → users | FK | нет |
+| `order_id` | bigint → orders | FK | да |
+| `category` | varchar(20)  |  | нет |
+| `subject` | varchar(150)  |  | нет |
+| `message` | text  |  | нет |
+| `status` | varchar(20)  |  | нет |
+| `staff_response` | text  |  | нет |
+| `responded_by_id` | bigint → users | FK | да |
+| `replied_at` | timestamptz  |  | да |
+| `created_at` | timestamptz  |  | нет |
+| `updated_at` | timestamptz  |  | нет |
+
+Правила в базе:
+- **CHECK** `category IN ('product', 'delivery', 'payment', 'service', 'other')` — complaint_category_valid
+- **CHECK** `status IN ('new', 'in_progress', 'resolved')` — complaint_status_valid

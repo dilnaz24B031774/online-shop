@@ -7,10 +7,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from . import backups
-from .models import Category, City, Product, Review, ReviewPhoto, User
+from .models import Category, City, Order, OrderItem, Payment, Product, Review, ReviewPhoto, User
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 JPG = b"\xff\xd8\xff\xe0" + b"\x00" * 64
@@ -61,6 +62,10 @@ class ReviewPhotoTests(TestCase):
         self.api = APIClient()
         self.api.force_authenticate(self.user)
         self.url = f"/api/products/{self.product.id}/reviews/"
+        # a review needs a paid purchase of the product (rule from the reviews part)
+        order = Order.objects.create(user=self.user, status="delivered", shipping_address="Almaty", total_amount=Decimal("10"))
+        OrderItem.objects.create(order=order, product=self.product, quantity=1, unit_price=Decimal("10"))
+        Payment.objects.create(order=order, method="card", status="paid", amount=Decimal("10"), paid_at=timezone.now())
 
     def tearDown(self):
         self.override.disable()
@@ -95,7 +100,8 @@ class ReviewPhotoTests(TestCase):
         self.assertEqual(r.json()["photos"], [])
 
     def test_database_allows_only_positions_0_1_2(self):
-        review = Review.objects.create(user=self.user, product=self.product, rating=5)
+        review = Review.objects.create(user=self.user, product=self.product, rating=5,
+                                       order_item=OrderItem.objects.get(order__user=self.user))
         with self.assertRaises(IntegrityError), transaction.atomic():
             ReviewPhoto.objects.create(review=review, image="reviews/x.png", position=3)
 

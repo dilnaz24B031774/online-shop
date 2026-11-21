@@ -88,7 +88,7 @@
         </span>
         <span class="cart-text">
           <small>{{ i.t('nav.cart') }}</small>
-          <strong>${{ cart.cart()?.total ?? '0.00' }}</strong>
+          <strong>{{ money.format(cart.cart()?.total ?? '0.00') }}</strong>
         </span>
       </a>
     </div>
@@ -104,11 +104,15 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.6.7-2.8 1.6-3.7.2 1.4 1 2.2 2 2.2 0-2.8-.6-4.6.4-7z"/></svg>
         {{ i.t('nav.top') }}
       </a>
-      @for (c of categories(); track c.id) {
+      @for (c of categories().slice(0, 7); track c.id) {   <!-- the rest: "All products" -->
         <a [routerLink]="['/catalog']" [queryParams]="{ category: c.id }">{{ i.pick(c) }}</a>
       }
       <span class="spacer"></span>
       <!-- "My orders" is not a separate tab anymore: it lives inside the profile -->
+      @if (auth.isLoggedIn()) {
+        <a routerLink="/settings" routerLinkActive="active" class="strong">{{ i.t('nav.settings') }}</a>
+        <a routerLink="/complaints" routerLinkActive="active" class="strong">{{ i.t('nav.complaints') }}</a>
+      }
       @if (auth.user()?.role === 'admin' || auth.user()?.role === 'manager') {
         <a [href]="adminUrl" target="_blank" rel="noopener" class="strong">{{ i.t('nav.admin') }}</a>
       }
@@ -142,6 +146,8 @@
       <h3>{{ i.t('footer.account') }}</h3>
       <a routerLink="/profile" [queryParams]="{ tab: 'orders' }">{{ i.t('nav.orders') }}</a>
       <a routerLink="/cart">{{ i.t('nav.cart') }}</a>
+      @if (auth.isLoggedIn()) { <a routerLink="/settings">{{ i.t('nav.settings') }}</a> }
+      <a routerLink="/complaints">{{ i.t('nav.complaints') }}</a>
       <a routerLink="/login">{{ i.t('nav.login') }}</a>
       <a routerLink="/register">{{ i.t('auth.register') }}</a>
     </div>

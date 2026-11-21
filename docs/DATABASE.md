@@ -1,6 +1,6 @@
 # База данных Sauda
 
-PostgreSQL 16, 22 таблицы. Схема создаётся миграциями Django (`python manage.py migrate`).
+PostgreSQL 16, 25 таблиц. Схема создаётся миграциями Django (`python manage.py migrate`).
 
 - **ER-диаграмма:** [erd.png](erd.png) (для печати и слайдов), [erd.svg](erd.svg) (можно увеличивать без потери качества), исходник [erd.mmd](erd.mmd)
 - **Все колонки, ключи и правила:** [db_tables.md](db_tables.md)
@@ -17,6 +17,7 @@ PostgreSQL 16, 22 таблицы. Схема создаётся миграция
 | Покупатель | `cart_items`, `favorites`, `reviews`, `review_photos`, `stock_subscriptions`, `notifications` | корзина, избранное, отзывы с фото, «Сообщить о поступлении», уведомления |
 | Заказ | `orders`, `order_items`, `promo_codes`, `promo_redemptions` | заказ, его товары по цене на момент покупки, промокоды |
 | Оплата | `payments`, `saved_cards`, `qr_payments`, `refunds` | оплата, сохранённые карты (токен), QR-оплата с телефона, возвраты |
+| Поддержка и безопасность | `complaints`, `telegram_accounts`, `telegram_challenges` | книга жалоб с ответом магазина, восстановление пароля через Telegram |
 
 ## Главные связи
 
@@ -33,7 +34,7 @@ PostgreSQL 16, 22 таблицы. Схема создаётся миграция
 | Правило | Где | Что защищает |
 |---|---|---|
 | `price > 0`, `stock_quantity >= 0` | products | нет бесплатных товаров и отрицательного склада |
-| `rating BETWEEN 1 AND 5`, UNIQUE (user, product) | reviews | один отзыв от покупателя на товар |
+| `rating BETWEEN 1 AND 5`, отзыв привязан к оплаченной покупке (`order_item`) | reviews | отзыв только после покупки, один на покупку |
 | UNIQUE (user) WHERE is_default | addresses | только один адрес «по умолчанию» |
 | `refunded_quantity <= quantity` | order_items | нельзя вернуть больше, чем куплено |
 | `refunded_amount <= amount` | payments | нельзя вернуть больше денег, чем оплачено |
