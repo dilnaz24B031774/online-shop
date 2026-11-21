@@ -34,20 +34,27 @@ After login the frontend gets an access token and sends it in every private requ
 
 You need Python 3.11+, Node.js 20+ and PostgreSQL with a database called `onlineshop`.
 
+**Once: database settings in `.env`**
+
+```bash
+cd online-shop
+cp .env.example .env                 # Windows: copy .env.example .env
+```
+
+Open `.env` and write your database name, user and password. The file stays on your computer
+(it is in `.gitignore`), so every teammate has their own. No more `export` lines.
+
 **Terminal 1 — backend**
 
 ```bash
 cd online-shop
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate             # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-export POSTGRES_DB=onlineshop
-export POSTGRES_USER=postgres
-export POSTGRES_PASSWORD=your_password
-
 python3 manage.py migrate
-python3 manage.py seed_shop          # demo data, only the first time
+python3 manage.py seed_shop          # demo data, only the first time (also loads the catalogue)
+python3 manage.py load_catalog       # database that already has data: adds new products and photos
 python3 manage.py runserver
 ```
 
@@ -61,11 +68,10 @@ npm start
 
 Website: http://localhost:4200 · Staff panel: http://127.0.0.1:8000/staff/ · Django admin: http://127.0.0.1:8000/admin/
 
-Next time you only need `source venv/bin/activate`, the three `export` lines and `runserver`,
-and `npm start` in the second terminal.
+Next time you only need `source venv/bin/activate` and `runserver`, and `npm start` in the second terminal.
 
-Important: if you start `runserver` without the `export` lines, Django uses an empty SQLite file
-instead of PostgreSQL, and logins will not work.
+If `.env` is missing, Django stops with the message "PostgreSQL is not configured" instead of
+silently opening an empty SQLite file. For a quick run without PostgreSQL write `USE_SQLITE=1` in `.env`.
 
 ## Demo accounts
 
@@ -94,9 +100,8 @@ Password for all: `Shop2026!`
 
 ## Database
 
-11 shop tables: `users`, `addresses`, `categories`, `products`, `cart_items`, `orders`,
-`order_items`, `payments`, `reviews`, `notifications`, `promo_codes`
-plus 2 tables for login protection. ERD: `docs/erd.mmd`.
+20 tables. Full description: [`docs/DATABASE.md`](docs/DATABASE.md), ER diagram: [`docs/erd.png`](docs/erd.png),
+every column and rule: [`docs/db_tables.md`](docs/db_tables.md). After changing models run `python3 manage.py db_docs`.
 
 Rules are checked by the database itself (CHECK and UNIQUE constraints), for example:
 price > 0, stock ≥ 0, rating 1–5, one review per user and product,
@@ -157,7 +162,8 @@ works on both databases.
 | "Server does not answer" on the website | backend is not running, start `runserver` again |
 | `database "onlineshop" does not exist` | `CREATE DATABASE onlineshop;` in pgAdmin |
 | `You have unapplied migrations` | `python3 manage.py migrate` |
-| Admin login does not work | check the `export` lines; reset password: `python3 manage.py changepassword admin` |
+| `PostgreSQL is not configured` | create `.env` from `.env.example` (see "How to run") |
+| Admin login does not work | check `.env`; reset password: `python3 manage.py changepassword admin` |
 | "Sign-in is temporarily blocked" | 5 wrong passwords — wait 5 minutes |
 
 ## Оплата, возвраты, «Топ» (Data & Database — Жанабергенова Дильназ)
@@ -173,17 +179,38 @@ works on both databases.
 
 ### QR-оплата с телефона
 
-1. Ноутбук и телефон в одной Wi-Fi сети (если университетский Wi-Fi не пускает — включите точку доступа на телефоне и подключите к ней ноутбук).
-2. Запуск для всей сети:
-   ```bash
-   python3 manage.py runserver 0.0.0.0:8000      # Terminal 1
-   cd frontend && npm run start:lan               # Terminal 2
-   ```
-3. Оформите заказ с оплатой «QR в приложении банка» → отсканируйте QR камерой телефона → «Оплатить».
-   Страница на ноутбуке сама станет «Оплачен», в заказе видно устройство («iPhone · Safari»).
+Сайт обращается к бэкенду через тот же адрес (`/api`, см. `frontend/proxy.conf.json`), поэтому наружу нужно открыть только сайт.
+
+**Вариант 1. Одна сеть (Wi-Fi или режим модема на телефоне) — работает даже без интернета:**
+```bash
+python3 manage.py runserver                    # Terminal 1
+cd frontend && npm run start:lan               # Terminal 2
+```
+Под QR видно, на какой адрес он ведёт. После смены сети нажмите «Обновить адрес».
+
+**Вариант 2. Из любой сети, в том числе с 5G (туннель):**
+```bash
+brew install cloudflared                       # один раз (Windows: winget install Cloudflare.cloudflared)
+cd frontend && npm run tunnel                  # Terminal 3, сайт и бэкенд уже запущены
+```
+Откройте на ноутбуке ссылку `https://….trycloudflare.com` из вывода команды, и QR поведёт на неё.
+
+Оформите заказ с оплатой по QR → отсканируйте QR камерой телефона → «Оплатить».
+Страница на ноутбуке сама станет «Оплачен», в заказе видно устройство («iPhone · Safari»).
 
 QR содержит одноразовую секретную ссылку (`qr_payments.token`): работает один раз и только до конца таймера.
 
 Быстрая проверка таймера: `export PAYMENT_TIMEOUT_MINUTES=1` перед `runserver`.
 Отменить просроченные заказы вручную: `python3 manage.py expire_orders` (сайт и так проверяет сам).
+
+## Регион, резервные копии, фото в отзывах
+
+| Что | Как работает | Таблицы |
+|---|---|---|
+| **Город** | после входа окно «Вы из города Алматы?» → «Да» или выбор из 18 городов; город в шапке, срок доставки на странице товара, город подставляется в новый адрес | `cities`, `users.city_id` |
+| **Резервные копии** | `python3 manage.py backup_db` (pg_dump → `backups/`, хранятся последние 10), `backup_db --list`, `restore_db ИМЯ --yes` (перед восстановлением сохраняет текущее состояние). В панели админа: «Резервные копии» → создать и скачать | все таблицы |
+| **Фото в отзывах** | до 3 фото, только JPG, PNG или WEBP (тип проверяется по содержимому файла), до 5 МБ; просмотр по клику | `review_photos` (позиции 0–2, CHECK → не больше 3) |
+| **Новые категории** | «Часы», «Украшения», «Мебель», «Аксессуары для телефона», «Авто и мото» — `python3 manage.py load_catalog` | `categories`, `products` |
+
+Фото из отзывов лежат в папке `media/`, копии базы — в `backups/`. Обе папки не попадают в git.
 

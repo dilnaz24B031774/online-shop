@@ -6,6 +6,12 @@ main { flex: 1; }
 .topbar-in { display: flex; justify-content: space-between; align-items: center; height: 38px; gap: 1rem; }
 .note { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--amber); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.city {
+  display: inline-flex; align-items: center; gap: .35rem; border: 0; background: transparent; color: #d5e6de;
+  font: 600 .82rem var(--font-body); cursor: pointer; padding: .25em .55em; border-radius: 8px; white-space: nowrap;
+}
+.city:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.city svg { width: 15px; height: 15px; fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .langs { display: flex; gap: 2px; }
 .langs button {
   border: 0; background: transparent; color: #d5e6de; font: 600 .78rem var(--font-body);
@@ -67,7 +73,8 @@ main { flex: 1; }
 
 /* category navigation */
 .catnav { border-top: 1px solid var(--line); background: #fff; }
-.catnav-in { display: flex; align-items: center; gap: 1.6rem; height: 48px; overflow-x: auto; scrollbar-width: none; }
+.catnav-in { display: flex; align-items: center; gap: 1.6rem; height: 48px; overflow-x: auto; scrollbar-width: none;
+             -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
 .catnav a { color: var(--text); font-weight: 500; font-size: .92rem; white-space: nowrap; text-decoration: none; padding: .4rem 0; }
 .catnav a:hover { color: var(--green-700); }
 .catnav .all {

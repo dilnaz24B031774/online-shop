@@ -2,32 +2,62 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { ApiService } from './api.service';
 
-/** Builds the link inside the QR. If the site is opened as localhost, a phone cannot open "localhost",
- *  so we ask the backend for the laptop's Wi-Fi address (192.168.x.x) and use it instead. */
+/** Where the QR link leads:
+ *  public — a tunnel or hosting link (https://….trycloudflare.com): opens from any network, also 5G;
+ *  lan    — the laptop's address in the local network (Wi-Fi or phone hotspot): the phone must be in it;
+ *  local  — only "localhost" is known: a phone cannot open it. */
+export type LinkKind = 'public' | 'lan' | 'local';
+
+const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/;
+
 @Injectable({ providedIn: 'root' })
 export class PayLinkService {
   private api = inject(ApiService);
   private readonly lanIp = signal<string>('');
+  readonly checking = signal(false);
   private asked = false;
 
   private get isLocal(): boolean {
     return ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname);
   }
 
+  /** Ask the backend once for the laptop's address in the network (only needed on localhost). */
   ensure() {
     if (this.asked || !this.isLocal) return;
     this.asked = true;
-    this.api.network().subscribe({ next: r => this.lanIp.set(r.lan_ip), error: () => {} });
+    this.refresh();
+  }
+
+  /** Ask again, e.g. after switching to another Wi-Fi or to the phone hotspot. */
+  refresh() {
+    if (!this.isLocal) return;
+    this.checking.set(true);
+    this.api.network().subscribe({
+      next: r => { this.lanIp.set(r.lan_ip); this.checking.set(false); },
+      error: () => this.checking.set(false),
+    });
+  }
+
+  canRefresh(): boolean {
+    return this.isLocal;
+  }
+
+  host(): string {
+    const port = location.port ? `:${location.port}` : '';
+    return (this.isLocal && this.lanIp() ? this.lanIp() : location.hostname) + port;
   }
 
   link(token: string): string {
-    const port = location.port ? `:${location.port}` : '';
-    const host = this.isLocal && this.lanIp() ? this.lanIp() : location.hostname;
-    return `${location.protocol}//${host}${port}/pay/${token}`;
+    return `${location.protocol}//${this.host()}/pay/${token}`;
   }
 
-  /** true if the phone will not be able to open the link (no Wi-Fi address found) */
+  kind(): LinkKind {
+    if (this.isLocal) return this.lanIp() ? 'lan' : 'local';
+    return PRIVATE.test(location.hostname) ? 'lan' : 'public';
+  }
+
+  /** true if the phone will not be able to open the link */
   localOnly(): boolean {
-    return this.isLocal && !this.lanIp();
+    return this.kind() === 'local';
   }
 }

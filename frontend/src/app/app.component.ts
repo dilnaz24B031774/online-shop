@@ -4,7 +4,9 @@ import { filter, map } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
-import { API_URL, ApiService } from './core/api.service';
+import { ApiService } from './core/api.service';
+import { RegionService } from './core/region.service';
+import { RegionModalComponent } from './shared/region-modal.component';
 import { AuthService } from './core/auth.service';
 import { CartService } from './core/cart.service';
 import { I18nService, LANGS } from './core/i18n.service';
@@ -16,13 +18,14 @@ import { NotificationBellComponent } from './shared/notification-bell.component'
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, AssistantComponent, NotificationBellComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, AssistantComponent, NotificationBellComponent, RegionModalComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent implements OnInit {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
+  readonly region = inject(RegionService);
   readonly cart = inject(CartService);
   readonly theme = inject(ThemeService);   // created here, so the saved theme is applied on start
   private api = inject(ApiService);
@@ -33,7 +36,7 @@ export class AppComponent implements OnInit {
     { initialValue: location.pathname.startsWith('/pay/') });
 
   readonly langs = LANGS;
-  readonly adminUrl = `${API_URL.replace(/\/api\/?$/, '')}/staff/`;
+  readonly adminUrl = `${location.protocol}//${location.hostname || '127.0.0.1'}:8000/staff/`;
   readonly categories = signal<Category[]>([]);
   readonly fav = inject(FavoritesService);
   readonly year = new Date().getFullYear();
@@ -41,6 +44,7 @@ export class AppComponent implements OnInit {
   searchCategory = '';
 
   ngOnInit() {
+    this.region.load();
     this.api.categories().subscribe({ next: c => this.categories.set(c), error: () => {} });
   }
 

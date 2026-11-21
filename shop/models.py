@@ -35,6 +35,29 @@ class MultiLanguageNameMixin(models.Model):
 # ---------------------------------------------------------------------
 # 1. USER - customers, managers and admins in one table
 # ---------------------------------------------------------------------
+class City(models.Model):
+    """Cities we deliver to. The customer picks one after signing in ("Are you from Almaty?")."""
+    name_en = models.CharField(max_length=60, unique=True)
+    name_ru = models.CharField(max_length=60)
+    name_kk = models.CharField(max_length=60)
+    delivery_days_min = models.PositiveSmallIntegerField(default=1)
+    delivery_days_max = models.PositiveSmallIntegerField(default=3)
+    sort_order = models.PositiveSmallIntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "cities"
+        ordering = ["sort_order", "name_ru"]
+        verbose_name_plural = "cities"
+        constraints = [
+            models.CheckConstraint(condition=Q(delivery_days_min__gte=1), name="city_days_min_positive"),
+            models.CheckConstraint(condition=Q(delivery_days_max__gte=F("delivery_days_min")), name="city_days_max_not_less_min"),
+        ]
+
+    def __str__(self):
+        return self.name_ru or self.name_en
+
+
 class User(AbstractUser):
     """
     Django's user + our fields. The password column stores only a HASH
@@ -57,6 +80,7 @@ class User(AbstractUser):
     preferred_language = models.CharField(
         max_length=2, choices=Language.choices, default=Language.EN
     )
+    city = models.ForeignKey("City", on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
 
     class Meta:
         db_table = "users"
@@ -144,6 +168,24 @@ class Product(MultiLanguageNameMixin):
             models.CheckConstraint(condition=Q(price__gt=0), name="product_price_positive"),
             models.CheckConstraint(condition=Q(stock_quantity__gte=0), name="product_stock_not_negative"),
         ]
+
+
+class ProductImage(models.Model):
+    """Extra photos of a product (gallery). The main photo stays in products.image_url."""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
+    url = models.URLField(max_length=300)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = "product_images"
+        ordering = ["product", "position"]
+        constraints = [
+            models.UniqueConstraint(fields=["product", "position"], name="product_image_position_unique"),
+            models.UniqueConstraint(fields=["product", "url"], name="product_image_url_unique"),
+        ]
+
+    def __str__(self):
+        return f"{self.product.sku} #{self.position}"
 
 
 # ---------------------------------------------------------------------
@@ -389,6 +431,26 @@ class Review(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user", "product"], name="review_one_per_user_product"),
             models.CheckConstraint(condition=Q(rating__gte=1, rating__lte=5), name="review_rating_1_to_5"),
+        ]
+
+
+REVIEW_PHOTOS_MAX = 3
+
+
+class ReviewPhoto(models.Model):
+    """Up to 3 photos in a review. The file is on disk (media/reviews/...), the table keeps its path."""
+    review = models.ForeignKey(Review, on_delete=models.CASCADE, related_name="photos")
+    image = models.FileField(upload_to="reviews/%Y/%m/")
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "review_photos"
+        ordering = ["review", "position"]
+        constraints = [
+            models.UniqueConstraint(fields=["review", "position"], name="review_photo_position_unique"),
+            # positions 0, 1, 2 only -> the database itself allows at most 3 photos per review
+            models.CheckConstraint(condition=Q(position__lt=REVIEW_PHOTOS_MAX), name="review_photo_max_3"),
         ]
 
 

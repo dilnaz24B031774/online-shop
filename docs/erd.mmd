@@ -1,94 +1,249 @@
 erDiagram
-    USERS ||--o{ ADDRESSES : "saves"
-    USERS ||--o{ ORDERS : "places"
-    USERS ||--o{ CART_ITEMS : "has in cart"
-    USERS ||--o{ REVIEWS : "writes"
-    USERS ||--o{ NOTIFICATIONS : "receives"
-    CATEGORIES ||--o{ PRODUCTS : "contains"
-    PRODUCTS ||--o{ CART_ITEMS : "is in"
-    PRODUCTS ||--o{ ORDER_ITEMS : "is sold in"
-    PRODUCTS ||--o{ REVIEWS : "gets"
-    ORDERS ||--|{ ORDER_ITEMS : "contains"
-    ORDERS ||--|| PAYMENTS : "is paid by"
-    ORDERS |o--o{ NOTIFICATIONS : "about"
+    CITIES |o--o{ USERS : "city"
+    USERS ||--o{ ADDRESSES : "user"
+    CATEGORIES ||--o{ PRODUCTS : "category"
+    PRODUCTS ||--o{ PRODUCT_IMAGES : "product"
+    USERS ||--o{ CART_ITEMS : "user"
+    PRODUCTS ||--o{ CART_ITEMS : "product"
+    USERS ||--o{ ORDERS : "user"
+    PROMO_CODES |o--o{ ORDERS : "promo_code"
+    ORDERS ||--o{ ORDER_ITEMS : "order"
+    PRODUCTS ||--o{ ORDER_ITEMS : "product"
+    USERS ||--o{ SAVED_CARDS : "user"
+    ORDERS ||--o| PAYMENTS : "order"
+    SAVED_CARDS |o--o{ PAYMENTS : "saved_card"
+    USERS ||--o{ REVIEWS : "user"
+    PRODUCTS ||--o{ REVIEWS : "product"
+    REVIEWS ||--o{ REVIEW_PHOTOS : "review"
+    USERS ||--o{ NOTIFICATIONS : "user"
+    ORDERS |o--o{ NOTIFICATIONS : "order"
+    USERS ||--o{ FAVORITES : "user"
+    PRODUCTS ||--o{ FAVORITES : "product"
+    ORDERS ||--o{ REFUNDS : "order"
+    ORDER_ITEMS ||--o{ REFUNDS : "order_item"
+    USERS |o--o{ REFUNDS : "created_by"
+    USERS ||--o{ STOCK_SUBSCRIPTIONS : "user"
+    PRODUCTS ||--o{ STOCK_SUBSCRIPTIONS : "product"
+    USERS ||--o{ PROMO_REDEMPTIONS : "user"
+    PROMO_CODES ||--o{ PROMO_REDEMPTIONS : "promo"
+    ORDERS ||--o| PROMO_REDEMPTIONS : "order"
+    PAYMENTS ||--o| QR_PAYMENTS : "payment"
 
+    CITIES {
+        bigint id PK
+        varchar(60) name_en UK
+        varchar(60) name_ru
+        varchar(60) name_kk
+        smallint delivery_days_min
+        smallint delivery_days_max
+        smallint sort_order
+        boolean is_active
+    }
     USERS {
         bigint id PK
-        varchar username UK
-        varchar email UK
-        varchar password "hash only"
-        varchar phone
-        varchar role "customer|manager|admin"
-        varchar preferred_language "en|ru|kk"
+        varchar(128) password
+        timestamptz last_login
+        boolean is_superuser
+        varchar(150) username UK
+        varchar(150) first_name
+        varchar(150) last_name
+        boolean is_staff
         boolean is_active
+        timestamptz date_joined
+        varchar(254) email UK
+        varchar(20) phone
+        varchar(20) role
+        varchar(2) preferred_language
+        bigint city_id FK
     }
     ADDRESSES {
         bigint id PK
         bigint user_id FK
-        varchar label
-        varchar city
-        varchar street
-        boolean is_default "1 per user"
+        varchar(30) label
+        varchar(60) city
+        varchar(150) street
+        varchar(20) apartment
+        varchar(10) postal_code
+        boolean is_default
     }
     CATEGORIES {
         bigint id PK
-        varchar name_en UK
-        varchar name_ru
-        varchar name_kk
+        varchar(150) name_en
+        varchar(150) name_ru
+        varchar(150) name_kk
         boolean is_active
     }
     PRODUCTS {
         bigint id PK
+        varchar(150) name_en
+        varchar(150) name_ru
+        varchar(150) name_kk
         bigint category_id FK
-        varchar sku UK
-        varchar name_en
-        varchar name_ru
-        varchar name_kk
-        numeric price "> 0"
-        int stock_quantity ">= 0"
+        varchar(30) sku UK
+        text description_en
+        text description_ru
+        text description_kk
+        numeric(10,2) price
+        int stock_quantity
+        varchar(60) brand
+        varchar(300) image_url
         boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    PRODUCT_IMAGES {
+        bigint id PK
+        bigint product_id FK
+        varchar(300) url
+        smallint position
     }
     CART_ITEMS {
         bigint id PK
         bigint user_id FK
         bigint product_id FK
-        int quantity "> 0"
+        int quantity
+        timestamptz added_at
+    }
+    PROMO_CODES {
+        bigint id PK
+        varchar(30) code UK
+        smallint discount_percent
+        numeric(12,2) min_order_amount
+        timestamptz valid_from
+        timestamptz valid_until
+        int max_uses
+        int used_count
+        boolean is_active
+        timestamptz created_at
     }
     ORDERS {
         bigint id PK
         bigint user_id FK
-        varchar status
-        varchar shipping_address "copied"
-        numeric total_amount ">= 0"
-        timestamp created_at
+        varchar(20) status
+        varchar(255) shipping_address
+        numeric(12,2) total_amount
+        bigint promo_code_id FK
+        numeric(12,2) discount_amount
+        boolean is_demo
+        timestamptz created_at
+        timestamptz updated_at
     }
     ORDER_ITEMS {
         bigint id PK
         bigint order_id FK
         bigint product_id FK
-        int quantity "> 0"
-        numeric unit_price "price at purchase"
+        int quantity
+        numeric(10,2) unit_price
+        int refunded_quantity
+    }
+    SAVED_CARDS {
+        bigint id PK
+        bigint user_id FK
+        varchar(40) token UK
+        varchar(12) brand
+        varchar(4) last4
+        varchar(60) holder
+        smallint exp_month
+        smallint exp_year
+        timestamptz created_at
+        timestamptz last_used_at
     }
     PAYMENTS {
         bigint id PK
         bigint order_id FK,UK
-        varchar method
-        numeric amount "> 0"
-        varchar status
-        varchar provider_reference "no card data"
-        timestamp paid_at
+        varchar(20) method
+        numeric(12,2) amount
+        varchar(20) status
+        varchar(64) provider_reference
+        timestamptz paid_at
+        varchar(12) card_brand
+        varchar(4) card_last4
+        varchar(120) failure_reason
+        smallint installment_months
+        bigint saved_card_id FK
+        timestamptz expires_at
+        numeric(12,2) refunded_amount
     }
     REVIEWS {
         bigint id PK
         bigint user_id FK
         bigint product_id FK
-        smallint rating "1..5"
+        smallint rating
         text comment
+        timestamptz created_at
+    }
+    REVIEW_PHOTOS {
+        bigint id PK
+        bigint review_id FK
+        filefield image
+        smallint position
+        timestamptz created_at
     }
     NOTIFICATIONS {
         bigint id PK
         bigint user_id FK
         bigint order_id FK
-        varchar message
+        varchar(10) kind
+        varchar(255) message
+        varchar(255) message_ru
+        varchar(255) message_kk
+        varchar(200) link
         boolean is_read
+        timestamptz created_at
+    }
+    LOGIN_SECURITY_STATE {
+        varchar(64) key PK
+        varchar(20) scope
+        int attempts
+        timestamptz window_started_at
+        timestamptz locked_until
+        timestamptz updated_at
+    }
+    LOGIN_CHALLENGES {
+        varchar(64) id PK
+        varchar(64) source_key
+        varchar(20) purpose
+        varchar(64) answer_digest
+        timestamptz expires_at
+        timestamptz created_at
+    }
+    FAVORITES {
+        bigint id PK
+        bigint user_id FK
+        bigint product_id FK
+        timestamptz created_at
+    }
+    REFUNDS {
+        bigint id PK
+        bigint order_id FK
+        bigint order_item_id FK
+        int quantity
+        numeric(12,2) amount
+        varchar(20) reason
+        varchar(200) comment
+        bigint created_by_id FK
+        timestamptz created_at
+    }
+    STOCK_SUBSCRIPTIONS {
+        bigint id PK
+        bigint user_id FK
+        bigint product_id FK
+        timestamptz created_at
+        timestamptz notified_at
+    }
+    PROMO_REDEMPTIONS {
+        bigint id PK
+        bigint user_id FK
+        bigint promo_id FK
+        bigint order_id FK,UK
+        timestamptz created_at
+    }
+    QR_PAYMENTS {
+        bigint id PK
+        bigint payment_id FK,UK
+        varchar(64) token UK
+        timestamptz created_at
+        timestamptz expires_at
+        timestamptz paid_at
+        varchar(80) paid_device
     }

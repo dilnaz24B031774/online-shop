@@ -2,9 +2,10 @@ import { UpperCasePipe } from '@angular/common';
 import { DemoQrComponent } from '../shared/demo-qr.component';
 import { CountdownComponent } from '../shared/countdown.component';
 import { QrCodeComponent } from '../shared/qr-code.component';
+import { RegionService } from '../core/region.service';
 import { PayLinkService } from '../core/pay-link.service';
 import { PayIconComponent } from '../shared/pay-icon.component';
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -69,7 +70,21 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
                 </ol>
                 <p class="qr-sum">\${{ o.total_amount }} · {{ i.t('transfer.purposeText', { n: o.id }) }}</p>
                 <p class="qr-wait"><span class="pulse" aria-hidden="true"></span>{{ i.t('qr.waitingPhone') }}</p>
-                <small class="muted demo-note">{{ links.localOnly() ? i.t('qr.lanHint') : i.t('qr.wifiHint') }}</small>
+                <div class="net" [class]="'net net-' + links.kind()">
+                  <div class="net-row">
+                    <span class="net-dot" aria-hidden="true"></span>
+                    <span>{{ i.t('qr.net.' + links.kind()) }}</span>
+                  </div>
+                  @if (links.kind() !== 'local') { <code class="net-host">{{ links.host() }}</code> }
+                  @if (links.kind() !== 'public') {
+                    <small>{{ i.t('qr.net.help') }}</small>
+                    @if (links.canRefresh()) {
+                      <button type="button" class="net-btn" (click)="links.refresh()" [disabled]="links.checking()">
+                        {{ links.checking() ? i.t('qr.net.checking') : i.t('qr.net.refresh') }}
+                      </button>
+                    }
+                  }
+                </div>
               </div>
             </div>
           }
@@ -305,6 +320,18 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
               background: var(--soft); border-radius: 16px; padding: 1.2rem; }
     .qr-pay p { margin: .3rem 0; } .qr-sum { font-weight: 700; }
     .demo-note { display: block; margin-top: .5rem; font-size: .76rem; }
+    .net { margin-top: .8rem; padding: .7rem .85rem; border-radius: 12px; border: 1px solid var(--line); background: var(--soft);
+           display: grid; gap: .35rem; font-size: .82rem; }
+    .net-row { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: var(--text); }
+    .net-dot { width: 9px; height: 9px; border-radius: 50%; background: #d9a400; flex: none; }
+    .net-public .net-dot { background: #1f9d55; }
+    .net-local .net-dot { background: #d64545; }
+    .net-host { font-size: .8rem; color: var(--muted); word-break: break-all; }
+    .net small { color: var(--muted); line-height: 1.4; }
+    .net-btn { justify-self: start; border: 1.5px solid var(--line); background: var(--surface, #fff); color: var(--text);
+               border-radius: 999px; padding: .35em .9em; font: 600 .78rem var(--font-body); cursor: pointer; }
+    .net-btn:hover:not(:disabled) { border-color: var(--green-700); }
+    .net-btn:disabled { opacity: .6; cursor: default; }
     @media (max-width: 560px) { .qr-pay { flex-direction: column; } }
     details summary { cursor: pointer; font-weight: 600; color: var(--teal-dark); margin: .4rem 0 1rem; }
     .addr { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1rem; }
@@ -427,6 +454,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   // saved cards: offered only if the customer paid by card recently (the server decides)
   readonly links = inject(PayLinkService);
+  readonly region = inject(RegionService);
   private qrPoll?: ReturnType<typeof setInterval>;
   readonly savedCards = signal<SavedCard[]>([]);
   readonly recentDays = signal(90);
@@ -437,6 +465,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   addressId: number | null = null;
   method = 'card';
   newAddress = { label: 'Home', city: '', street: '', apartment: '' };
+  /** the customer's city (chosen after sign-in) is filled in a new address */
+  private readonly fillCity = effect(() => {
+    const c = this.region.current();
+    if (c && !this.newAddress.city) this.newAddress.city = this.i.pick(c);
+  });
 
   ngOnInit() {
     this.cart.load().subscribe({ error: () => {} });
@@ -519,7 +552,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   saveAddress() {
     this.api.addAddress(this.newAddress).subscribe(a => {
-      this.newAddress = { label: 'Home', city: '', street: '', apartment: '' };
+      this.newAddress = { label: 'Home', city: this.region.current() ? this.i.pick(this.region.current()) : '', street: '', apartment: '' };
       this.loadAddresses(a.id);
     });
   }

@@ -13,18 +13,38 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def load_env_file(path):
+    """Reads KEY=value lines from .env. Variables already set in the terminal win."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip().removeprefix("export ").strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        os.environ.setdefault(key, value)
+
+
+load_env_file(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-q(&dj*)29wsgjq0unic%-)p(%fum2%eecmuv&it6w4e7jvwls1"
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-q(&dj*)29wsgjq0unic%-)p(%fum2%eecmuv&it6w4e7jvwls1")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "1").lower() in ("1", "true", "yes")
 
 # DEBUG: any host, so a phone in the same Wi-Fi can open http://<laptop-ip>:8000 (QR payment demo)
 ALLOWED_HOSTS = ["*"] if DEBUG else os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
@@ -80,8 +100,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# PostgreSQL is used when POSTGRES_DB is set (see README).
-# Without it the project falls back to SQLite, so it also runs offline.
+# PostgreSQL settings come from .env (copy .env.example to .env).
+# SQLite is used ONLY when USE_SQLITE=1 is written on purpose, never silently.
 if os.environ.get("POSTGRES_DB"):
     DATABASES = {
         "default": {
@@ -93,13 +113,18 @@ if os.environ.get("POSTGRES_DB"):
             "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         }
     }
-else:
+elif os.environ.get("USE_SQLITE", "").lower() in ("1", "true", "yes"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+else:
+    raise ImproperlyConfigured(
+        "PostgreSQL is not configured: the file .env was not found or has no POSTGRES_DB.\n"
+        "Fix: copy .env.example to .env next to manage.py and write your database name, user and password."
+    )
 
 # Our own user table (users) with role and preferred_language.
 # MUST be set before the first "migrate" of the project.
@@ -194,3 +219,9 @@ PAYMENT_TIMEOUT_MINUTES = int(os.environ.get("PAYMENT_TIMEOUT_MINUTES", "15"))
 BANK_TRANSFER_TIMEOUT_HOURS = int(os.environ.get("BANK_TRANSFER_TIMEOUT_HOURS", "24"))
 # Saved cards are offered only if the customer paid with a card during the last N days
 SAVED_CARD_RECENT_DAYS = int(os.environ.get("SAVED_CARD_RECENT_DAYS", "90"))
+
+
+# Files uploaded by customers (photos in reviews)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+REVIEW_PHOTO_MAX_MB = 5

@@ -5,6 +5,7 @@ Run it again with --reset to delete the shop data and create it again.
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -191,6 +192,8 @@ class Command(BaseCommand):
 
         CartItem.objects.create(user=users["timur"], product=products["EL-HEAD-01"], quantity=1)
         CartItem.objects.create(user=users["timur"], product=products["ST-PEN-10"], quantity=2)
+
+        call_command("load_catalog", stdout=self.stdout)
 
         self.stdout.write(self.style.SUCCESS(
             f"Demo data created: {User.objects.count()} users, {Product.objects.count()} products, "

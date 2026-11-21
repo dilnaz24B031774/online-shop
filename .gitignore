@@ -13,3 +13,11 @@ frontend/.angular/
 .DS_Store
 .idea/
 .env
+# Local settings (passwords)
+.env
+
+# Database backups (may contain personal data)
+backups/
+
+# Photos uploaded by customers
+media/

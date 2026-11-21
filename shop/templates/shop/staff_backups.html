@@ -1,0 +1,47 @@
+{% extends 'shop/staff_base.html' %}
+{% block title %}Резервные копии{% endblock %}
+{% block content %}
+<style>
+  .how { display:grid; gap:10px; padding-bottom:22px; }
+  .how > :not(.panel-head) { margin:0 22px; }
+  .how code { background:#f2f5f2; border-radius:8px; padding:8px 10px; display:block; font-size:12px; overflow-x:auto; }
+  .tool { font-size:12px; color:var(--muted); }
+</style>
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">Только для администратора</p>
+    <h1>Резервные копии базы</h1>
+    <p class="intro">Копия сохраняет все таблицы и данные. Хранятся последние {{ keep }} копий, старые удаляются сами.</p>
+  </div>
+  <form method="post">{% csrf_token %}<button class="button" type="submit">＋ Сделать копию сейчас</button></form>
+</div>
+
+<div class="grid-two">
+  <section class="panel">
+    <div class="panel-head"><h2>Сохранённые копии</h2></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Файл</th><th>Формат</th><th>Размер</th><th></th></tr></thead>
+      <tbody>
+      {% for f in files %}
+        <tr>
+          <td class="cell-main"><strong>{{ f.name }}</strong></td>
+          <td>{{ f.kind }}</td>
+          <td class="number">{{ f.kb }} KB</td>
+          <td><a href="{% url 'staff_backup_download' f.name %}">Скачать</a></td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="empty"><strong>Копий пока нет</strong>Нажмите «Сделать копию сейчас».</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="panel how">
+    <div class="panel-head"><h2>Как восстановить</h2></div>
+    <p>Восстановление заменяет текущие данные, поэтому оно делается командой, а не кнопкой. Перед восстановлением текущее состояние сохраняется отдельной копией.</p>
+    <code>python manage.py restore_db              # самая новая копия</code>
+    <code>python manage.py restore_db ИМЯ_ФАЙЛА --yes</code>
+    <p class="tool">{% if pg_dump %}pg_dump найден: {{ pg_dump }}{% else %}pg_dump не найден — копии сохраняются в формате JSON.{% endif %}</p>
+  </section>
+</div>
+{% endblock %}

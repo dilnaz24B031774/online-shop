@@ -22,6 +22,7 @@ urlpatterns = [
     path("auth/challenge/", auth_views.challenge),
     path("auth/refresh/", TokenRefreshView.as_view()),      # {refresh} -> new access token
     path("me/", api.me),
+    path("cities/", api.cities),
     path("addresses/", api.addresses),
 
     # cart and orders (login required)

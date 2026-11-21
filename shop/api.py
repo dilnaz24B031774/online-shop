@@ -5,6 +5,7 @@ Login uses JWT tokens: the frontend sends  Authorization: Bearer <access token>
 from django.core.exceptions import ValidationError as DjangoValidationError
 from decimal import Decimal, InvalidOperation
 
+from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -14,9 +15,9 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . import payments, services
-from .models import Address, CartItem, Category, Favorite, Notification, Order, Product, Review, StockSubscription
+from .models import Address, CartItem, Category, City, Favorite, Notification, Order, Product, Review, StockSubscription
 from .serializers import (
-    AddressSerializer, CartItemSerializer, CategorySerializer, NotificationSerializer, OrderSerializer,
+    AddressSerializer, CartItemSerializer, CategorySerializer, CitySerializer, NotificationSerializer, OrderSerializer,
     SavedCardSerializer,
     ProductDetailSerializer, ProductSerializer, RegisterSerializer, ReviewSerializer,
     UserSerializer,
@@ -120,7 +121,7 @@ def product_filters(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def product_detail(request, pk):
-    product = get_object_or_404(_products().prefetch_related("reviews__user"), pk=pk)
+    product = get_object_or_404(_products().prefetch_related("reviews__user", "reviews__photos", "images"), pk=pk)
     return Response(ProductDetailSerializer(product).data)
 
 
@@ -160,8 +161,15 @@ def add_review(request, pk):
         return Response({"detail": "You have already reviewed this product."}, status=400)
     serializer = ReviewSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    serializer.save(user=request.user, product=product)
-    return Response(serializer.data, status=201)
+    photos = request.FILES.getlist("photos")      # sent as multipart/form-data, up to 3
+    try:
+        services.validate_review_photos(photos)
+    except services.ReviewPhotoError as e:
+        return Response({"photos": [str(e)]}, status=400)
+    with transaction.atomic():
+        review = serializer.save(user=request.user, product=product)
+        services.add_review_photos(review, photos)
+    return Response(ReviewSerializer(review).data, status=201)
 
 
 # ---------------------------------------------------------------- accounts
@@ -177,6 +185,13 @@ def register(request):
     except DjangoValidationError as e:          # weak password
         return Response({"password": e.messages}, status=400)
     return Response({"user": UserSerializer(user).data, **_tokens(user)}, status=201)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def cities(request):
+    """GET /api/cities/ -> cities we deliver to, with delivery days."""
+    return Response(CitySerializer(City.objects.filter(is_active=True), many=True).data)
 
 
 @api_view(["GET", "PATCH"])

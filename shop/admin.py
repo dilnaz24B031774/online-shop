@@ -8,6 +8,9 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
+    ReviewPhoto,
+    City,
+    ProductImage,
     Address, CartItem, Category, Favorite, Notification, Order, OrderItem, Payment, Product, PromoCode,
     PromoRedemption, Refund, Review, SavedCard, StockSubscription, User,
 )
@@ -167,8 +170,17 @@ class CategoryAdmin(admin.ModelAdmin):
         return obj._product_count
 
 
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ("position", "url")
+    verbose_name = "Дополнительное фото"
+    verbose_name_plural = "Галерея фото"
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
+    inlines = [ProductImageInline]
     list_display = ("sku", "name_en", "brand", "category", "price", "stock_quantity", "is_active")
     list_filter = ("category", "is_active", "brand")
     search_fields = ("sku", "name_en", "name_ru", "name_kk", "brand")
@@ -354,3 +366,16 @@ class StockSubscriptionAdmin(ReadOnlyAdmin):
 class PromoRedemptionAdmin(ReadOnlyAdmin):
     list_display = ("promo", "user", "order", "created_at")
     search_fields = ("promo__code", "user__username")
+
+
+@admin.register(City)
+class CityAdmin(admin.ModelAdmin):
+    list_display = ("name_ru", "name_en", "delivery_days_min", "delivery_days_max", "sort_order", "is_active")
+    list_editable = ("delivery_days_min", "delivery_days_max", "sort_order", "is_active")
+    search_fields = ("name_ru", "name_en", "name_kk")
+
+
+@admin.register(ReviewPhoto)
+class ReviewPhotoAdmin(admin.ModelAdmin):
+    list_display = ("review", "position", "image", "created_at")
+    list_select_related = ("review",)

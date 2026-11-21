@@ -12,6 +12,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
 import { StarsComponent } from '../shared/stars.component';
 import { FavoritesService } from '../core/favorites.service';
 import { NotifyButtonComponent } from '../shared/notify-button.component';
+import { RegionService } from '../core/region.service';
 
 @Component({
   selector: 'app-product',
@@ -22,8 +23,24 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
 
       @if (product(); as p) {
         <div class="top">
-          <div class="art">
-            <app-product-image [product]="p" />
+          <div class="media">
+            <div class="art">
+              @if (photo(); as src) {
+                <img class="main-photo" [src]="src" [alt]="i.pick(p)" />
+              } @else {
+                <app-product-image [product]="p" />
+              }
+            </div>
+            @if ((p.images?.length ?? 0) > 1) {
+              <div class="thumbs" role="list">
+                @for (src of p.images; track src; let n = $index) {
+                  <button type="button" role="listitem" class="thumb" [class.on]="(photo() ?? p.images![0]) === src"
+                          [attr.aria-label]="i.pick(p) + ' ' + (n + 1)" (click)="photo.set(src)">
+                    <img [src]="src" alt="" loading="lazy" />
+                  </button>
+                }
+              </div>
+            }
           </div>
 
           <div class="info">
@@ -78,6 +95,15 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
                 <app-notify-button [productId]="p.id" size="big" />
               }
               @if (cartError()) { <div class="alert alert-error">{{ cartError() }}</div> }
+              <button type="button" class="delivery" (click)="region.ask()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.1M17 19a2 2 0 1 0 0-.1"/></svg>
+                @if (region.current(); as c) {
+                  <span>{{ i.t('region.delivery', { city: i.pick(c), min: c.delivery_days_min, max: c.delivery_days_max }) }}</span>
+                } @else {
+                  <span>{{ i.t('region.deliveryPick') }}</span>
+                }
+                <span class="change">{{ i.t('region.change') }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -93,6 +119,15 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
                     <app-stars [value]="r.rating" />
                   </header>
                   @if (r.comment) { <p>{{ r.comment }}</p> }
+                  @if (r.photos?.length) {
+                    <div class="rev-photos">
+                      @for (src of r.photos; track src) {
+                        <button type="button" (click)="viewer.set(src)" [attr.aria-label]="i.t('review.openPhoto')">
+                          <img [src]="src" alt="" loading="lazy" />
+                        </button>
+                      }
+                    </div>
+                  }
                   <small class="muted">{{ r.created_at | date: 'mediumDate' }}</small>
                 </article>
               } @empty {
@@ -113,12 +148,37 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
                   <label for="comment">{{ i.t('product.comment') }}</label>
                   <textarea id="comment" name="comment" rows="3" [(ngModel)]="comment"></textarea>
                 </div>
+                <div class="field">
+                  <label>{{ i.t('review.photos') }}</label>
+                  <div class="pick">
+                    @for (ph of picked(); track ph.url; let n = $index) {
+                      <div class="pick-item">
+                        <img [src]="ph.url" alt="" />
+                        <button type="button" class="pick-x" (click)="removePhoto(n)" [attr.aria-label]="i.t('review.remove')">×</button>
+                      </div>
+                    }
+                    @if (picked().length < 3) {
+                      <label class="pick-add">
+                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="addPhotos($event)" />
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v13H4zM12 10a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/></svg>
+                        <span>{{ i.t('review.add') }}</span>
+                      </label>
+                    }
+                  </div>
+                  <small class="muted">{{ i.t('review.rules') }}</small>
+                </div>
                 @if (reviewMsg()) { <div class="alert" [class.alert-ok]="reviewOk()" [class.alert-error]="!reviewOk()">{{ reviewMsg() }}</div> }
-                <button class="btn btn-primary" type="submit">{{ i.t('product.sendReview') }}</button>
+                <button class="btn btn-primary" type="submit" [disabled]="sending()">{{ i.t('product.sendReview') }}</button>
               </form>
             }
           </div>
         </section>
+        @if (viewer(); as v) {
+          <div class="viewer" role="dialog" aria-modal="true" (click)="viewer.set(null)">
+            <img [src]="v" alt="" />
+            <button type="button" class="viewer-x" [attr.aria-label]="i.t('common.close')">×</button>
+          </div>
+        }
       } @else if (error()) {
         <div class="alert alert-error">{{ i.t('common.error') }}</div>
       } @else {
@@ -129,7 +189,20 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
   styles: [`
     .back { display: inline-block; margin-bottom: 1.2rem; font-weight: 600; }
     .top { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+    .delivery { margin-top: .9rem; width: 100%; display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; text-align: left;
+                border: 0; border-top: 1px solid var(--line); background: none; padding: .85rem 0 0; color: var(--text); font: 500 .88rem var(--font-body); cursor: pointer; }
+    .delivery svg { width: 20px; height: 20px; flex: none; fill: none; stroke: var(--green-700); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .delivery .change { margin-left: auto; color: var(--green-700); font-weight: 600; font-size: .82rem; }
+    .delivery:hover .change { text-decoration: underline; }
+    .media { min-width: 0; }
     .art { border-radius: 18px; overflow: hidden; height: 460px; background: var(--soft); padding: 2rem; border: 1px solid var(--line); }
+    .main-photo { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .thumbs { display: flex; gap: 10px; margin-top: 12px; overflow-x: auto; padding-bottom: 2px; }
+    .thumb { flex: none; width: 74px; height: 74px; padding: 6px; border-radius: 12px; cursor: pointer;
+             background: var(--soft); border: 2px solid transparent; transition: border-color .15s; }
+    .thumb:hover { border-color: var(--line); }
+    .thumb.on { border-color: var(--green-700); }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
     h1 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); margin: .6rem 0 .4rem; }
     .chip { text-decoration: none; }
@@ -159,6 +232,22 @@ import { NotifyButtonComponent } from '../shared/notify-button.component';
     .review { padding: 1.1rem 1.3rem; }
     .review header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; }
     .review p { margin: 0 0 .4rem; }
+    .rev-photos { display: flex; gap: 8px; margin: .2rem 0 .5rem; }
+    .rev-photos button { width: 76px; height: 76px; padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: zoom-in; background: var(--soft); }
+    .rev-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pick { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .3rem; }
+    .pick-item { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+    .pick-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pick-x { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
+              background: rgba(0, 0, 0, .6); color: #fff; font-size: 15px; line-height: 22px; padding: 0; }
+    .pick-add { width: 72px; height: 72px; border: 1.5px dashed var(--line); border-radius: 10px; display: grid; place-content: center; justify-items: center;
+                gap: 2px; cursor: pointer; color: var(--muted); font-size: .7rem; font-weight: 600; text-align: center; }
+    .pick-add:hover { border-color: var(--green-700); color: var(--green-700); }
+    .pick-add input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .pick-add svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+    .viewer { position: fixed; inset: 0; z-index: 950; background: rgba(5, 15, 12, .85); display: grid; place-items: center; padding: 24px; cursor: zoom-out; }
+    .viewer img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+    .viewer-x { position: absolute; top: 14px; right: 18px; border: 0; background: none; color: #fff; font-size: 2rem; cursor: pointer; }
     .who { font-weight: 700; }
     .write h3 { margin-bottom: 1rem; }
     .rate { display: flex; gap: 4px; margin-bottom: 1rem; }
@@ -188,6 +277,7 @@ export class ProductComponent {
   readonly i = inject(I18nService);
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
+  readonly region = inject(RegionService);
   private api = inject(ApiService);
   private router = inject(Router);
   private doc = inject(DOCUMENT);
@@ -195,6 +285,7 @@ export class ProductComponent {
   readonly id = input.required<string>();   // from /product/:id
 
   readonly product = signal<ProductDetail | null>(null);
+  readonly photo = signal<string | null>(null);   // photo picked in the gallery
   readonly error = signal(false);
   readonly qty = signal(1);
   readonly busy = signal(false);
@@ -204,6 +295,9 @@ export class ProductComponent {
   comment = '';
   readonly reviewMsg = signal('');
   readonly reviewOk = signal(false);
+  readonly sending = signal(false);
+  readonly picked = signal<{ file: File; url: string }[]>([]);   // photos chosen for the review
+  readonly viewer = signal<string | null>(null);                  // photo opened full size
   readonly fav = inject(FavoritesService);
 
   constructor() {
@@ -212,7 +306,7 @@ export class ProductComponent {
 
   load(id: number) {
     this.api.product(id).subscribe({
-      next: p => { this.product.set(p); this.qty.set(1); },
+      next: p => { this.product.set(p); this.qty.set(1); this.photo.set(null); },
       error: () => this.error.set(true),
     });
   }
@@ -230,17 +324,43 @@ export class ProductComponent {
     });
   }
 
+  addPhotos(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const ok = ['image/jpeg', 'image/png', 'image/webp'];
+    const room = 3 - this.picked().length;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const bad = files.find(f => !ok.includes(f.type) || f.size > 5 * 1024 * 1024);
+    if (bad || files.length > room) {
+      this.reviewOk.set(false);
+      this.reviewMsg.set(this.i.t('review.rules'));
+    }
+    const good = files.filter(f => ok.includes(f.type) && f.size <= 5 * 1024 * 1024).slice(0, room);
+    this.picked.update(list => [...list, ...good.map(file => ({ file, url: URL.createObjectURL(file) }))]);
+  }
+
+  removePhoto(index: number) {
+    const item = this.picked()[index];
+    if (item) URL.revokeObjectURL(item.url);
+    this.picked.update(list => list.filter((_, n) => n !== index));
+  }
+
   sendReview(productId: number) {
-    this.api.addReview(productId, this.rating(), this.comment).subscribe({
+    this.sending.set(true);
+    this.api.addReview(productId, this.rating(), this.comment, this.picked().map(p => p.file)).subscribe({
       next: () => {
+        this.sending.set(false);
         this.reviewOk.set(true);
         this.reviewMsg.set(this.i.t('product.reviewSent'));
         this.comment = '';
+        this.picked().forEach(p => URL.revokeObjectURL(p.url));
+        this.picked.set([]);
         this.load(productId);
       },
       error: e => {
+        this.sending.set(false);
         this.reviewOk.set(false);
-        this.reviewMsg.set(e.error?.detail ?? e.error?.rating?.[0] ?? this.i.t('common.error'));
+        this.reviewMsg.set(e.error?.detail ?? e.error?.rating?.[0] ?? e.error?.photos?.[0] ?? this.i.t('common.error'));
       },
     });
   }

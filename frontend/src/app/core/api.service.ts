@@ -3,13 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Address, AppNotification, CardInput, Cart, Category, Order, Product, ProductDetail, ProductFilters, PromoCheck, QrInfo, Review, SavedCard, SearchResult, Tokens, TopItem, User,
+  Address, AppNotification, CardInput, Cart, Category, City, Order, Product, ProductDetail, ProductFilters, PromoCheck, QrInfo, Review, SavedCard, SearchResult, Tokens, TopItem, User,
 } from './models';
 
-/** Address of the Django backend. Change it if the backend runs elsewhere. */
-/** The backend on the same computer as the website. Works for localhost and for a phone in the same Wi-Fi
- *  (the site opened as http://192.168.x.x:4200 talks to http://192.168.x.x:8000). */
-export const API_URL = `${location.protocol}//${location.hostname || '127.0.0.1'}:8000/api`;
+/** The backend is reached through the same address as the website: ng serve forwards /api to Django
+ *  (proxy.conf.json). So the site works the same on localhost, in Wi-Fi and through a tunnel link. */
+export const API_URL = '/api';
 
 export interface ProductQuery {
   q?: string; category?: string | number; sort?: string;
@@ -67,8 +66,14 @@ export class ApiService {
     return this.http.get<ProductDetail>(`${API_URL}/products/${id}/`);
   }
 
-  addReview(productId: number, rating: number, comment: string): Observable<Review> {
-    return this.http.post<Review>(`${API_URL}/products/${productId}/reviews/`, { rating, comment });
+  addReview(productId: number, rating: number, comment: string, photos: File[] = []): Observable<Review> {
+    const url = `${API_URL}/products/${productId}/reviews/`;
+    if (!photos.length) return this.http.post<Review>(url, { rating, comment });
+    const form = new FormData();            // files go as multipart/form-data
+    form.append('rating', String(rating));
+    form.append('comment', comment);
+    photos.forEach(f => form.append('photos', f, f.name));
+    return this.http.post<Review>(url, form);
   }
 
   search(q: string): Observable<SearchResult> {
@@ -92,7 +97,11 @@ export class ApiService {
     return this.http.get<User>(`${API_URL}/me/`);
   }
 
-  updateMe(data: Partial<User>): Observable<User> {
+  cities(): Observable<City[]> {
+    return this.http.get<City[]>(`${API_URL}/cities/`);
+  }
+
+  updateMe(data: Partial<User> & { city_id?: number | null }): Observable<User> {
     return this.http.patch<User>(`${API_URL}/me/`, data);
   }
 

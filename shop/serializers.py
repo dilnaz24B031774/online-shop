@@ -4,7 +4,7 @@ Serializers turn database rows into JSON for the Angular frontend (and back).
 from rest_framework import serializers
 
 from .models import (
-    Address, CartItem, Category, Notification, Order, OrderItem, Product, Refund, Review, SavedCard, User,
+    Address, CartItem, Category, City, Notification, Order, OrderItem, Product, Refund, Review, SavedCard, User,
 )
 
 
@@ -33,11 +33,16 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class ReviewSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    photos = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ["id", "username", "rating", "comment", "created_at"]
-        read_only_fields = ["id", "username", "created_at"]
+        fields = ["id", "username", "rating", "comment", "created_at", "photos"]
+        read_only_fields = ["id", "username", "created_at", "photos"]
+
+    def get_photos(self, review):
+        # relative address (/media/...): works on localhost, in Wi-Fi and through a tunnel link
+        return [p.image.url for p in review.photos.all()]
 
     def validate_rating(self, value):
         if not 1 <= value <= 5:
@@ -47,16 +52,35 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 class ProductDetailSerializer(ProductSerializer):
     reviews = ReviewSerializer(many=True, read_only=True)
+    images = serializers.SerializerMethodField()
 
     class Meta(ProductSerializer.Meta):
-        fields = ProductSerializer.Meta.fields + ["reviews"]
+        fields = ProductSerializer.Meta.fields + ["reviews", "images"]
+
+    def get_images(self, product):
+        """Main photo first, then the gallery (product_images) without repeats."""
+        urls = [product.image_url] if product.image_url else []
+        for img in product.images.all():
+            if img.url not in urls:
+                urls.append(img.url)
+        return urls
+
+
+class CitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = City
+        fields = ["id", "name_en", "name_ru", "name_kk", "delivery_days_min", "delivery_days_max"]
 
 
 class UserSerializer(serializers.ModelSerializer):
+    city = CitySerializer(read_only=True)
+    city_id = serializers.PrimaryKeyRelatedField(
+        source="city", queryset=City.objects.filter(is_active=True), write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = User
         fields = ["id", "username", "email", "first_name", "last_name", "phone",
-                  "role", "preferred_language"]
+                  "role", "preferred_language", "city", "city_id"]
         read_only_fields = ["id", "username", "role"]
 
 

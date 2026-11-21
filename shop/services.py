@@ -788,3 +788,47 @@ def pay_by_qr(token: str, user_agent: str = "") -> QrPayment:
     qr.paid_device = device_name(user_agent)[:80]
     qr.save(update_fields=["paid_at", "paid_device"])
     return qr
+
+
+# ---------------------------------------------------------------- review photos
+class ReviewPhotoError(Exception):
+    pass
+
+
+# the first bytes of a file show its real type (a renamed .exe will not pass)
+_IMAGE_SIGNATURES = (
+    (b"\xff\xd8\xff", "jpg"),
+    (b"\x89PNG\r\n\x1a\n", "png"),
+)
+
+
+def image_type(uploaded):
+    head = uploaded.read(12)
+    uploaded.seek(0)
+    for sig, kind in _IMAGE_SIGNATURES:
+        if head.startswith(sig):
+            return kind
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "webp"
+    return None
+
+
+def validate_review_photos(files):
+    from django.conf import settings
+    from .models import REVIEW_PHOTOS_MAX
+    if len(files) > REVIEW_PHOTOS_MAX:
+        raise ReviewPhotoError(f"You can add up to {REVIEW_PHOTOS_MAX} photos.")
+    max_bytes = settings.REVIEW_PHOTO_MAX_MB * 1024 * 1024
+    for f in files:
+        if f.size > max_bytes:
+            raise ReviewPhotoError(f"Each photo must be smaller than {settings.REVIEW_PHOTO_MAX_MB} MB.")
+        if not image_type(f):
+            raise ReviewPhotoError("Only JPG, PNG or WEBP photos.")
+
+
+@transaction.atomic
+def add_review_photos(review, files):
+    from .models import ReviewPhoto
+    for position, f in enumerate(files):
+        f.name = f"review{review.pk}_{position}.{image_type(f)}"   # our own safe file name
+        ReviewPhoto.objects.create(review=review, image=f, position=position)

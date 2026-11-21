@@ -15,6 +15,13 @@ const ICONS: Record<string, string> = {
   Accessories: 'M9 2h6l1 5H8zM9 17h6l-1 5h-4zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
   Beauty: 'M10 3h4v5h-4zM8 8h8v13H8z',
   Sports: 'M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+  Kitchen: 'M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7zM9 4c0 2 2 2 2 4M14 4c0 2 2 2 2 4',
+  Groceries: 'M5 8h14l-1.5 12h-11zM9 8V6a3 3 0 0 1 6 0v2',
+  Watches: 'M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zM12 10v2l1.5 1M9 7l1-4h4l1 4M9 17l1 4h4l1-4',
+  Jewelry: 'M6 4h12l3 5-9 11L3 9zM3 9h18M9 4l3 16M15 4l-3 16',
+  Furniture: 'M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 11h18v5H3zM5 16v3M19 16v3',
+  'Phone accessories': 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2',
+  'Auto & Moto': 'M3 16v-3l2-5h14l2 5v3zM3 16h18M7 19a2 2 0 1 0 0-.1M17 19a2 2 0 1 0 0-.1',
 };
 const DEFAULT_ICON = 'M4 7h16l-1.5 12h-13zM9 7a3 3 0 0 1 6 0';
 
@@ -30,7 +37,7 @@ const DEFAULT_ICON = 'M4 7h16l-1.5 12h-13zM9 7a3 3 0 0 1 6 0';
     }
   `,
   styles: [`
-    :host { display: grid; place-items: center; width: 100%; height: 100%; overflow: hidden; }
+    :host { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; width: 100%; height: 100%; overflow: hidden; }
     img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .placeholder {
       width: 100%; height: 100%; display: grid; place-items: center;

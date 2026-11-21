@@ -33,10 +33,12 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
+  photos?: string[];   // /media/reviews/... , up to 3
 }
 
 export interface ProductDetail extends Product {
   reviews: Review[];
+  images?: string[];   // main photo first, then the gallery
 }
 
 export interface User {
@@ -48,6 +50,16 @@ export interface User {
   phone: string;
   role: 'customer' | 'manager' | 'admin';
   preferred_language: 'en' | 'ru' | 'kk';
+  city?: City | null;
+}
+
+export interface City {
+  id: number;
+  name_en: string;
+  name_ru: string;
+  name_kk: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
 }
 
 export interface Address {

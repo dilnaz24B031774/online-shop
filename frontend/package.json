@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "download-images": "node scripts/download-images.mjs",
-    "start:lan": "ng serve --host 0.0.0.0"
+    "start:lan": "ng serve --host 0.0.0.0",
+    "tunnel": "cloudflared tunnel --url http://localhost:4200"
   },
   "private": true,
   "dependencies": {
