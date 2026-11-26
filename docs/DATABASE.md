@@ -1,4 +1,4 @@
-# База данных Sauda
+# База данных SaudaGo
 
 PostgreSQL 16, 25 таблиц. Схема создаётся миграциями Django (`python manage.py migrate`).
 
@@ -33,6 +33,8 @@ PostgreSQL 16, 25 таблиц. Схема создаётся миграциям
 
 | Правило | Где | Что защищает |
 |---|---|---|
+| UNIQUE `lower(username)`, UNIQUE `lower(email)` | users | `Aigerim` и `aigerim` — один аккаунт; то же для e-mail |
+| UNIQUE (phone) WHERE phone <> '', `phone ~ '^\+[0-9]{7,15}$'` | users | один номер — один аккаунт, номер в одном формате (+77011111111) |
 | `price > 0`, `stock_quantity >= 0` | products | нет бесплатных товаров и отрицательного склада |
 | `rating BETWEEN 1 AND 5`, отзыв привязан к оплаченной покупке (`order_item`) | reviews | отзыв только после покупки, один на покупку |
 | UNIQUE (user) WHERE is_default | addresses | только один адрес «по умолчанию» |

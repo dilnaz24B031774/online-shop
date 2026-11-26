@@ -4,7 +4,7 @@ EN = None keeps the English text that is already in the catalogue data.
 """
 
 DESCRIPTIONS = {
-    # ---------------- original demo products ----------------
+    # ---------------- original products ----------------
     "EL-CABLE-01": (
         "Durable 1 m USB-C cable for fast charging and data transfer. Works with phones, tablets and laptops.",
         "Прочный кабель USB-C длиной 1 м для быстрой зарядки и передачи данных. Подходит для телефонов, планшетов и ноутбуков.",

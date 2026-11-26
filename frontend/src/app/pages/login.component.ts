@@ -34,7 +34,7 @@ import { AuthAsideComponent } from '../shared/auth-aside.component';
           }
 
           <div class="field">
-            <label for="u">{{ i.t('auth.username') }}</label>
+            <label for="u">{{ i.t('acc.loginLabel') }}</label>
             <input id="u" name="username" [(ngModel)]="username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
           </div>
           <div class="field">

@@ -9,12 +9,11 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import F, Q
+from django.db.models.functions import Lower
 from django.utils.translation import get_language
 
 
-# ---------------------------------------------------------------------
 # Helper: one field in three languages (EN is required, RU/KK optional)
-# ---------------------------------------------------------------------
 class MultiLanguageNameMixin(models.Model):
     name_en = models.CharField(max_length=150)
     name_ru = models.CharField(max_length=150, blank=True)
@@ -33,9 +32,7 @@ class MultiLanguageNameMixin(models.Model):
         return self.name_en
 
 
-# ---------------------------------------------------------------------
 # 1. USER - customers, managers and admins in one table
-# ---------------------------------------------------------------------
 class City(models.Model):
     """Cities we deliver to. The customer picks one after signing in ("Are you from Almaty?")."""
     name_en = models.CharField(max_length=60, unique=True)
@@ -107,12 +104,23 @@ class User(AbstractUser):
                 condition=Q(preferred_currency__in=["USD", "KZT", "EUR", "RUB"]),
                 name="user_currency_valid",
             ),
+            # Aigerim and aigerim are the same account; the same for e-mails
+            models.UniqueConstraint(Lower("username"), name="user_username_ci_unique"),
+            models.UniqueConstraint(Lower("email"), name="user_email_ci_unique"),
+            # one phone number - one account (an empty phone is allowed for many)
+            models.UniqueConstraint(fields=["phone"], condition=~Q(phone=""), name="user_phone_unique"),
+            models.CheckConstraint(condition=Q(phone="") | Q(phone__regex=r"^\+[0-9]{7,15}$"), name="user_phone_format"),
         ]
 
+    CUSTOMER_NUMBER_START = 100000
 
-# ---------------------------------------------------------------------
+    @property
+    def customer_number(self):
+        """Public customer number shown in the profile, like the ID on marketplaces."""
+        return self.CUSTOMER_NUMBER_START + self.pk if self.pk else None
+
+
 # Telegram recovery: verified destinations and expiring one-use challenges.
-# ---------------------------------------------------------------------
 class TelegramAccount(models.Model):
     """A recovery destination verified by a private message to our bot."""
 
@@ -147,9 +155,7 @@ class TelegramChallenge(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 2. ADDRESS - one customer can save many addresses
-# ---------------------------------------------------------------------
 class Address(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
     label = models.CharField(max_length=30, default="Home")  # Home, Work ...
@@ -178,9 +184,18 @@ class Address(models.Model):
         return f"{self.user.username}: {self.label} - {self.full_text()}"
 
 
-# ---------------------------------------------------------------------
 # 3. CATEGORY
-# ---------------------------------------------------------------------
+def validate_image_url(value):
+    from django.core.exceptions import ValidationError
+    from django.core.validators import URLValidator
+    if not value or (value.startswith("/") and not value.startswith("//")):
+        return
+    try:
+        URLValidator(schemes=["http", "https"])(value)
+    except ValidationError:
+        raise ValidationError("Enter an https:// link or a path that starts with /.")
+
+
 class Category(MultiLanguageNameMixin):
     is_active = models.BooleanField(default=True)
 
@@ -192,9 +207,7 @@ class Category(MultiLanguageNameMixin):
         ]
 
 
-# ---------------------------------------------------------------------
 # 4. PRODUCT
-# ---------------------------------------------------------------------
 class Product(MultiLanguageNameMixin):
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
     sku = models.CharField(max_length=30, unique=True)  # shop code, e.g. EL-MOUSE-01
@@ -205,7 +218,8 @@ class Product(MultiLanguageNameMixin):
     stock_quantity = models.PositiveIntegerField(default=0)
     brand = models.CharField(max_length=60, blank=True)
     # link to the product photo (can be changed in the admin panel)
-    image_url = models.URLField(max_length=300, blank=True)
+    # https://... link or a photo inside the website (/catalog/...)
+    image_url = models.CharField(max_length=300, blank=True, validators=[validate_image_url])
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -239,9 +253,7 @@ class ProductImage(models.Model):
         return f"{self.product.sku} #{self.position}"
 
 
-# ---------------------------------------------------------------------
 # 5. CART ITEM - products a customer wants to buy (before the order)
-# ---------------------------------------------------------------------
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="cart_items")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="+")
@@ -260,9 +272,7 @@ class CartItem(models.Model):
         return self.product.price * self.quantity
 
 
-# ---------------------------------------------------------------------
 # 6. ORDER
-# ---------------------------------------------------------------------
 class PromoCode(models.Model):
     """Discount code, e.g. BLACKFRIDAY = 20 % off. Checked in services.check_promo()."""
     code = models.CharField(max_length=30, unique=True)          # stored in UPPER case
@@ -314,7 +324,7 @@ class Order(models.Model):
     promo_code = models.ForeignKey(PromoCode, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="orders")
     discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    # demo orders made by "seed_shop" - hits, trends and reports use only REAL orders
+    # test orders made by "seed_shop" - hits, trends and reports use only real orders
     is_demo = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -336,9 +346,7 @@ class Order(models.Model):
         return f"Order #{self.pk} ({self.status})"
 
 
-# ---------------------------------------------------------------------
 # 7. ORDER ITEM - bridge table, solves Order <-> Product M:N
-# ---------------------------------------------------------------------
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="order_items")
@@ -366,12 +374,10 @@ class OrderItem(models.Model):
         return self.quantity - self.refunded_quantity
 
 
-# ---------------------------------------------------------------------
 # 7b. SAVED CARD - a TOKEN instead of the card number (only type + last 4 digits)
-# ---------------------------------------------------------------------
 class SavedCard(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_cards")
-    token = models.CharField(max_length=40, unique=True)          # tok_... from the (demo) bank
+    token = models.CharField(max_length=40, unique=True)          # tok_... from the payment provider
     brand = models.CharField(max_length=12)
     last4 = models.CharField(max_length=4)
     holder = models.CharField(max_length=60)
@@ -394,9 +400,7 @@ class SavedCard(models.Model):
         return f"{self.brand.upper()} •••• {self.last4} ({self.user.username})"
 
 
-# ---------------------------------------------------------------------
 # 8. PAYMENT - 1:1 with Order. Card numbers are NEVER stored.
-# ---------------------------------------------------------------------
 class Payment(models.Model):
     class Method(models.TextChoices):
         CARD = "card", "Card"
@@ -467,9 +471,7 @@ class Payment(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 9. REVIEW - one review per purchased order line, rating 1..5
-# ---------------------------------------------------------------------
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reviews")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
@@ -535,9 +537,7 @@ class ReviewPhoto(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 10. NOTIFICATION - messages for the user (order paid, shipped ...)
-# ---------------------------------------------------------------------
 class Notification(models.Model):
     class Kind(models.TextChoices):
         ORDER = "order", "Order"            # order paid, cancelled ...
@@ -594,9 +594,7 @@ class LoginChallenge(models.Model):
         db_table = "login_challenges"
 
 
-# ---------------------------------------------------------------------
 # 11. FAVORITE - liked products of a customer
-# ---------------------------------------------------------------------
 class Favorite(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="favorited_by")
@@ -610,9 +608,7 @@ class Favorite(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 12. REFUND - money back for some items of a paid order (one row per return)
-# ---------------------------------------------------------------------
 class Refund(models.Model):
     class Reason(models.TextChoices):
         DEFECT = "defect", "Defective item"
@@ -640,9 +636,7 @@ class Refund(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 13. STOCK SUBSCRIPTION - "tell me when it is back in stock"
-# ---------------------------------------------------------------------
 class StockSubscription(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="stock_subscriptions")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_subscriptions")
@@ -658,9 +652,7 @@ class StockSubscription(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 14. PROMO REDEMPTION - each customer can use a promo code only ONCE
-# ---------------------------------------------------------------------
 class PromoRedemption(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="promo_redemptions")
     promo = models.ForeignKey(PromoCode, on_delete=models.CASCADE, related_name="redemptions")
@@ -674,9 +666,7 @@ class PromoRedemption(models.Model):
         ]
 
 
-# ---------------------------------------------------------------------
 # 15. QR PAYMENT - a one-time secret link inside the QR code (scanned with a phone)
-# ---------------------------------------------------------------------
 class QrPayment(models.Model):
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name="qr")
     token = models.CharField(max_length=64, unique=True)          # random, impossible to guess

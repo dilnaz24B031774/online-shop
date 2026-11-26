@@ -20,6 +20,7 @@ urlpatterns = [
     path("auth/register/", api.register),
     path("auth/login/", auth_views.login),
     path("auth/challenge/", auth_views.challenge),
+    path("auth/username-check/", auth_views.username_check),
     path("auth/password-reset/", password_reset.request_reset),
     path("auth/password-reset/confirm/", password_reset.confirm_reset),
     path("auth/telegram/password-reset/", telegram_recovery.request_reset),

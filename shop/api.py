@@ -449,11 +449,11 @@ def notifications_read_all(request):
 
 
 
-# ---------------------------------------------------------------- QR payment (demo)
+# ---------------------------------------------------------------- QR payment
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def pay_qr(request, pk):
-    """POST /api/orders/<id>/pay-qr/ - demo: the customer has paid in the bank app.
+    """POST /api/orders/<id>/pay-qr/ - the customer has paid in the bank app.
     In a real shop the bank calls the shop's server; here the button plays the bank."""
     order = get_object_or_404(Order, pk=pk, user=request.user, payment__method="qr")
     services.expire_unpaid_orders(user=request.user)
@@ -543,7 +543,7 @@ def delete_card(request, pk):
 # ---------------------------------------------------------------- QR scanned with a phone
 def _qr_data(qr):
     order = qr.payment.order
-    return {"order_id": order.pk, "amount": f"{qr.payment.amount:.2f}", "shop": "Sauda",
+    return {"order_id": order.pk, "amount": f"{qr.payment.amount:.2f}", "shop": "SaudaGo",
             "items": sum(i.quantity for i in order.items.all()), "state": services.qr_state(qr),
             "expires_at": qr.expires_at, "created_at": qr.created_at, "paid_at": qr.paid_at,
             "paid_device": qr.paid_device}
@@ -565,7 +565,7 @@ def qr_info(request, token):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def qr_pay(request, token):
-    """POST /api/qr/<token>/pay/ - the customer confirmed on the phone (demo bank)."""
+    """POST /api/qr/<token>/pay/ - the customer confirmed on the phone."""
     services.expire_unpaid_orders()
     try:
         qr = services.pay_by_qr(token, request.META.get("HTTP_USER_AGENT", ""))

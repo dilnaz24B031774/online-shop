@@ -1,7 +1,7 @@
 """
 Cancel unpaid QR / bank transfer orders whose payment time is over.
     python manage.py expire_orders            # once
-    python manage.py expire_orders --loop     # every 30 seconds (leave it running during the demo)
+    python manage.py expire_orders --loop     # every 30 seconds
 The website also does this check by itself when orders are opened, so the command is optional.
 """
 import time

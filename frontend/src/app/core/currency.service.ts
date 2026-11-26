@@ -4,7 +4,7 @@ import { I18nService } from './i18n.service';
 
 export type CurrencyCode = 'USD' | 'KZT' | 'EUR' | 'RUB';
 
-/** Fixed rates for this demonstration shop; product/order amounts are stored in USD. */
+/** Fixed exchange rates; product and order amounts are stored in USD. */
 export const CURRENCIES: readonly {
   code: CurrencyCode; name: string; label: string; symbol: string; rate: number;
 }[] = [

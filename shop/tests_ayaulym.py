@@ -41,9 +41,7 @@ class BaseShopTest(TestCase):
                            format="json")
 
 
-# ----------------------------------------------------------------------------
 # 1. Empty stock
-# ----------------------------------------------------------------------------
 class EmptyStockTests(BaseShopTest):
 
     def test_cannot_add_empty_product_to_cart(self):
@@ -83,9 +81,7 @@ class EmptyStockTests(BaseShopTest):
         self.assertNotIn("SP-GLOVE", skus)
 
 
-# ----------------------------------------------------------------------------
 # 2. Password edge cases (on the registration page)
-# ----------------------------------------------------------------------------
 class PasswordEdgeCaseTests(BaseShopTest):
 
     def register(self, password, username="newuser"):
@@ -126,9 +122,7 @@ class PasswordEdgeCaseTests(BaseShopTest):
         self.assertIn("email", r.json())
 
 
-# ----------------------------------------------------------------------------
 # 3. Access: without login and to other people's data
-# ----------------------------------------------------------------------------
 class AccessTests(BaseShopTest):
 
     def test_private_pages_need_login(self):
@@ -168,9 +162,7 @@ class AccessTests(BaseShopTest):
         self.assertEqual(r.json()["orders"], [])
 
 
-# ----------------------------------------------------------------------------
 # 4. Checkout and cart rules
-# ----------------------------------------------------------------------------
 class CheckoutRulesTests(BaseShopTest):
 
     def test_empty_cart_cannot_be_ordered(self):
@@ -199,9 +191,7 @@ class CheckoutRulesTests(BaseShopTest):
         self.assertEqual(order["total_amount"], "17.99")
 
 
-# ----------------------------------------------------------------------------
 # 5. Reviews and search
-# ----------------------------------------------------------------------------
 class ReviewAndSearchTests(BaseShopTest):
 
     def test_second_review_for_same_product_is_refused(self):

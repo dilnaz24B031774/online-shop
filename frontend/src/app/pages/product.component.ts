@@ -118,7 +118,7 @@ import { RegionService } from '../core/region.service';
               @for (r of p.reviews; track r.id) {
                 <article class="review panel">
                   <header>
-                    <span class="who">{{ r.username }}</span>
+                    <span class="who">{{ r.author || r.username }}</span>
                     <app-stars [value]="r.rating" />
                   </header>
                   @if (r.comment) { <p>{{ r.comment }}</p> }

@@ -15,7 +15,7 @@
     <p class="eyebrow">Обработка заказа</p>
     <h1>Заказ #{{ order.pk }}</h1>
     <p class="intro">{{ order.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_status.html' with status=order.status %}
-      {% if order.is_demo %}<span class="badge">демо-заказ</span>{% endif %}</p>
+      {% if order.is_demo %}<span class="badge">тестовый заказ</span>{% endif %}</p>
   </div>
   <a class="button secondary" href="{% url 'staff_orders' %}">← Все заказы</a>
 </div>

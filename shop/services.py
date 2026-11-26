@@ -97,9 +97,7 @@ def fulfill_order(order: Order, target_status: str) -> Order:
     return order
 
 
-# ---------------------------------------------------------------------
 # CHECKOUT - all steps succeed together or all are cancelled (ROLLBACK)
-# ---------------------------------------------------------------------
 @transaction.atomic
 def place_order(user, address: Address, method: str, promo_code: str = "", card: dict | None = None,
                 installment_months: int | None = None, saved_card_id: int | None = None,
@@ -127,7 +125,7 @@ def place_order(user, address: Address, method: str, promo_code: str = "", card:
     discount = discount_for(promo, subtotal) if promo else Decimal("0")
     total = subtotal - discount
 
-    # 4. Payment. Card: ask the (demo) bank now. Wrong card data -> CardInvalid -> nothing saved.
+    # 4. Payment. Card: charge it now. Wrong card data -> CardInvalid -> nothing saved.
     #    Bank transfer / cash on delivery: the order waits for the money.
     result = None
     saved = None
@@ -255,9 +253,7 @@ def confirm_payment(order: Order) -> Order:
     return order
 
 
-# ---------------------------------------------------------------------
 # CANCEL + REFUND - one transaction: order, stock, payment, notification
-# ---------------------------------------------------------------------
 CUSTOMER_CAN_CANCEL = (Order.Status.PENDING, Order.Status.PAID)
 STAFF_CAN_CANCEL = (Order.Status.PENDING, Order.Status.PAID, Order.Status.SHIPPED)
 
@@ -324,9 +320,7 @@ def _cancel(order: Order, expired: bool = False) -> Order:
     return order
 
 
-# ---------------------------------------------------------------------
 # PAYMENT TIMER - unpaid QR / bank transfer orders are cancelled automatically
-# ---------------------------------------------------------------------
 def expire_unpaid_orders(user=None) -> int:
     """Cancels every order whose payment time is over. Called by `manage.py expire_orders`
     and also at the start of order / payment requests ("lazy" check), so it works without cron."""
@@ -348,9 +342,7 @@ def expire_unpaid_orders(user=None) -> int:
     return done
 
 
-# ---------------------------------------------------------------------
 # REFUND - money back for some items of a paid order
-# ---------------------------------------------------------------------
 REFUNDABLE_STATUSES = (Order.Status.PAID, Order.Status.SHIPPED, Order.Status.DELIVERED)
 
 
@@ -405,9 +397,7 @@ def refund_item(order: Order, item_id: int, quantity: int, reason: str = "other"
     return refund
 
 
-# ---------------------------------------------------------------------
 # BACK IN STOCK - "tell me when it is available"
-# ---------------------------------------------------------------------
 def subscribe_stock(user, product: Product) -> StockSubscription:
     if product.stock_quantity > 0:
         raise StockSubscriptionError("This product is in stock - you can buy it now.")
@@ -439,17 +429,13 @@ def notify_back_in_stock(product_ids) -> int:
     return len(subs)
 
 
-# ---------------------------------------------------------------------
 # SAVED CARDS - shown only to customers who paid by card recently
-# ---------------------------------------------------------------------
 def available_saved_cards(user):
     since = timezone.now() - timedelta(days=settings.SAVED_CARD_RECENT_DAYS)
     return SavedCard.objects.filter(user=user, last_used_at__gte=since)
 
 
-# ---------------------------------------------------------------------
-# TOP - only REAL paid purchases (demo orders from seed_shop are not counted)
-# ---------------------------------------------------------------------
+# TOP - only real paid purchases (test orders are not counted)
 PAID_STATUSES = (Order.Status.PAID, Order.Status.SHIPPED, Order.Status.DELIVERED)
 _NET_UNITS = Sum(F("quantity") - F("refunded_quantity"))
 
@@ -492,9 +478,7 @@ def top_new(limit=12):
     return Product.objects.filter(is_active=True).order_by("-created_at", "-id")[:limit]
 
 
-# ---------------------------------------------------------------------
 # SEARCH - 3 entity types, all three languages
-# ---------------------------------------------------------------------
 def search(text: str, user=None) -> dict:
     text = (text or "").strip()
     if not text:
@@ -524,9 +508,7 @@ def search(text: str, user=None) -> dict:
     return {"products": list(products), "categories": list(categories), "orders": list(orders)}
 
 
-# ---------------------------------------------------------------------
 # REPORTS for the manager / admin panel
-# ---------------------------------------------------------------------
 _REVENUE = ExpressionWrapper(
     F("order_items__quantity") * F("order_items__unit_price"),
     output_field=DecimalField(max_digits=12, decimal_places=2),
@@ -534,7 +516,7 @@ _REVENUE = ExpressionWrapper(
 
 
 def best_sellers(limit=5):
-    """Top products by units really bought by customers (demo, unpaid, cancelled and returned not counted)."""
+    """Top products by units really bought by customers (test, unpaid, cancelled and returned not counted)."""
     rows = (_real_items().values("product_id").annotate(units=_NET_UNITS, money=Sum(_LINE))
             .filter(units__gt=0).order_by("-units", "product_id")[:limit])
     found = {p.id: p for p in Product.objects.filter(id__in=[r["product_id"] for r in rows])}
@@ -573,10 +555,8 @@ def product_ratings():
     ).filter(review_count__gt=0).order_by("-avg_rating")
 
 
-# ---------------------------------------------------------------------
 # MANAGER REPORTS for a period (staff panel -> Отчёты). Cancelled orders are not counted.
-# Demo orders (seed_shop) are left out unless demo=True.
-# ---------------------------------------------------------------------
+# Test orders (seed_shop) are left out unless demo=True.
 def _orders(since=None, demo=False):
     orders = Order.objects.all() if demo else Order.objects.filter(is_demo=False)
     return orders.filter(created_at__gte=since) if since else orders
@@ -651,10 +631,7 @@ def report_promo_usage(since=None, demo=False) -> list:
                 .order_by("-orders"))
 
 
-# ---------------------------------------------------------------------
 # REGISTRATION - check password strength, then save only the hash
-# (the backend registration API calls this function)
-# ---------------------------------------------------------------------
 def register_customer(username: str, email: str, password: str, **extra):
     """
     Raises django.core.exceptions.ValidationError with all problems
@@ -670,15 +647,13 @@ def register_customer(username: str, email: str, password: str, **extra):
     return candidate
 
 
-# ---------------------------------------------------------------------
 # NOTIFICATIONS - one message to many customers (campaigns like Black Friday)
-# ---------------------------------------------------------------------
 BLACK_FRIDAY = {
-    "en": "Black Friday at Sauda is on 27 November! Get ready for special offers - "
+    "en": "Black Friday at SaudaGo is on 27 November! Get ready for special offers - "
           "check the catalog and put your favourites in the cart.",
-    "ru": "Чёрная пятница в Sauda — 27 ноября! Готовьтесь к специальным предложениям: "
+    "ru": "Чёрная пятница в SaudaGo — 27 ноября! Готовьтесь к специальным предложениям: "
           "загляните в каталог и добавьте любимые товары в корзину.",
-    "kk": "Sauda-дағы Black Friday — 27 қарашада! Арнайы ұсыныстарға дайын болыңыз: "
+    "kk": "SaudaGo-дағы Black Friday — 27 қарашада! Арнайы ұсыныстарға дайын болыңыз: "
           "каталогқа кіріп, ұнаған тауарларды себетке салыңыз.",
 }
 
@@ -702,9 +677,7 @@ def send_black_friday(users=None) -> int:
                                   link="/catalog", users=users)
 
 
-# ---------------------------------------------------------------------
 # PROMO CODES
-# ---------------------------------------------------------------------
 def check_promo(code: str, order_total: Decimal, lock: bool = False, user=None) -> PromoCode:
     """Returns the PromoCode or raises PromoCodeError with the reason.
     With `user`: the same customer cannot use a code twice (also a UNIQUE rule in the database)."""
@@ -736,9 +709,7 @@ def cart_total(user) -> Decimal:
                 for i in CartItem.objects.filter(user=user).select_related("product")), Decimal("0"))
 
 
-# ---------------------------------------------------------------------
 # QR SCAN - the phone opens /pay/<token>, the customer confirms, the order becomes paid
-# ---------------------------------------------------------------------
 class QrError(Exception):
     """code: not_found, expired, already_paid, cancelled"""
 

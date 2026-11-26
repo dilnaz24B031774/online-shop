@@ -13,8 +13,8 @@ from .models import (
 )
 from .roles import MANAGER_GROUP, ROLE_CHOICES, sync_role_access
 
-admin.site.site_header = "Sauda · Управление магазином"
-admin.site.site_title = "Sauda · Администратор"
+admin.site.site_header = "SaudaGo · Управление магазином"
+admin.site.site_title = "SaudaGo · Администратор"
 admin.site.index_title = "Все разделы магазина"
 admin.site.site_url = "/staff/"
 

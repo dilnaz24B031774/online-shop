@@ -16,7 +16,7 @@ from shop.models import (
 from .catalog_data import MOCK_PRODUCTS, ORIGINAL_PHOTOS
 from .descriptions import DESCRIPTIONS
 
-PASSWORD = "Shop2026!"   # demo password for every demo user
+PASSWORD = "Shop2026!"   # password of the sample accounts
 
 USERS = [
     # username,   email,                  role,       lang, first, last,          phone
@@ -81,7 +81,7 @@ REVIEWS = [
 
 
 def create_promo_codes():
-    """Demo promo codes (also: python manage.py seed_shop --promo-only)."""
+    """Promo codes (also: python manage.py seed_shop --promo-only)."""
     now = timezone.now()
     black_friday = timezone.make_aware(timezone.datetime(now.year, 11, 27))
     codes = [
@@ -174,7 +174,7 @@ class Command(BaseCommand):
             pay_status = "refunded" if status == "cancelled" else "paid"
             Payment.objects.create(order=order, method=method, amount=total, status=pay_status,
                                    paid_at=created + timedelta(minutes=2),
-                                   provider_reference=f"DEMO-{order.pk:06d}")
+                                   provider_reference=f"PAY-{order.pk:06d}")
             st_ru = {"paid": "оплачен", "shipped": "в пути", "delivered": "доставлен",
                      "cancelled": "отменён", "pending": "ожидает оплаты"}[status]
             st_kk = {"paid": "төленді", "shipped": "жолда", "delivered": "жеткізілді",

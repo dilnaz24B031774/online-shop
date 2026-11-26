@@ -15,7 +15,6 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -37,8 +36,6 @@ def load_env_file(path):
 load_env_file(BASE_DIR / ".env")
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-q(&dj*)29wsgjq0unic%-)p(%fum2%eecmuv&it6w4e7jvwls1")
@@ -46,7 +43,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-q(&dj*)29wsgjq0unic%-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "1").lower() in ("1", "true", "yes")
 
-# DEBUG: any host, so a phone in the same Wi-Fi can open http://<laptop-ip>:8000 (QR payment demo)
+# DEBUG: any host, so a phone in the same Wi-Fi can open http://<laptop-ip>:8000 (QR payment from a phone)
 ALLOWED_HOSTS = ["*"] if DEBUG else os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
 
@@ -98,7 +95,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 # PostgreSQL settings come from .env (copy .env.example to .env).
 # SQLite is used ONLY when USE_SQLITE=1 is written on purpose, never silently.
@@ -132,7 +128,6 @@ AUTH_USER_MODEL = "shop.User"
 
 
 # Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 # Password strength rules (checked BEFORE hashing; the database stores only the hash)
 AUTH_PASSWORD_VALIDATORS = [
@@ -152,7 +147,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
 
 LANGUAGE_CODE = "en"
 
@@ -166,19 +160,15 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = "static/"
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# ---------------------------------------------------------------------
 # REST API + JWT tokens (used by the Angular frontend)
-# ---------------------------------------------------------------------
 from datetime import timedelta
 
 REST_FRAMEWORK = {
@@ -218,7 +208,7 @@ EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "false").lower() in ("true", "1"
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "false" if EMAIL_USE_SSL else "true").lower() in ("true", "1", "yes")
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = (os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
-                      or EMAIL_HOST_USER or "Sauda <noreply@localhost>")
+                      or EMAIL_HOST_USER or "SaudaGo <noreply@localhost>")
 PASSWORD_RESET_TIMEOUT = 3600
 PASSWORD_RESET_RATE_WINDOW = 900
 PASSWORD_RESET_IP_LIMIT = 10
@@ -235,10 +225,8 @@ LOGIN_IP_CHALLENGE_AFTER = 10
 LOGIN_CHALLENGE_TTL_SECONDS = 120
 CHALLENGE_MAX_ISSUED_PER_MINUTE = 20
 
-# ---------------------------------------------------------------------
 # Payments (Data & Database: Zhanabergenova Dilnaz)
-# ---------------------------------------------------------------------
-# An unpaid QR order is cancelled after this many minutes (for a quick demo: export PAYMENT_TIMEOUT_MINUTES=1)
+# An unpaid QR order is cancelled after this many minutes (PAYMENT_TIMEOUT_MINUTES in .env)
 PAYMENT_TIMEOUT_MINUTES = int(os.environ.get("PAYMENT_TIMEOUT_MINUTES", "15"))
 # A bank transfer takes longer, so it waits 24 hours
 BANK_TRANSFER_TIMEOUT_HOURS = int(os.environ.get("BANK_TRANSFER_TIMEOUT_HOURS", "24"))

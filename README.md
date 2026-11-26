@@ -1,7 +1,7 @@
-# Sauda — Online Shop
+# SaudaGo — Online Shop
 
 Our team project for the course **Basics of Information Systems**.
-Sauda is a small online shop: customers can look at products, put them in the cart,
+SaudaGo is a small online shop: customers can look at products, put them in the cart,
 use a promo code and make an order. Staff work with products and orders in the admin panel.
 
 **Stack:** Django + Django REST Framework (backend), PostgreSQL (database), Angular 19 (frontend), JWT tokens (login).
@@ -235,7 +235,7 @@ for employees, and complaints are not published to other shoppers.
 
 ## Promo codes
 
-Demo codes: `WELCOME10` (−10 %), `SAUDA5` (−5 % from $20), `BLACKFRIDAY` (−25 % from $50, 20 Nov – 1 Dec).
+Promo codes: `WELCOME10` (−10 %), `SAUDA5` (−5 % from $20), `BLACKFRIDAY` (−25 % from $50, 20 Nov – 1 Dec).
 To add them to a database that already has data:
 
 ```bash

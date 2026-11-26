@@ -40,7 +40,7 @@ def reports(request):
     services.expire_unpaid_orders()
     period, since = _period(request)
     threshold = _threshold(request)
-    demo = request.GET.get("demo") == "1"          # demo orders from seed_shop are hidden by default
+    demo = request.GET.get("demo") == "1"          # test orders from seed_shop are hidden by default
     return render(request, "shop/staff_reports.html", {
         "active_section": "reports", "periods": PERIODS, "period": period, "threshold": threshold,
         "demo": demo, "demo_q": "&demo=1" if demo else "",

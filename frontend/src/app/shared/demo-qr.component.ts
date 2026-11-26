@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
-/** A QR-looking picture for the demo. It is NOT a real payment QR code. */
+/** Placeholder picture when an order has no QR token yet. */
 @Component({
   selector: 'app-demo-qr',
   template: `

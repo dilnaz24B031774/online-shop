@@ -15,9 +15,9 @@ import { CountdownComponent } from '../shared/countdown.component';
       <header class="bank-top">
         <span class="logo">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19M6.5 15h4"/></svg>
-          Sauda Pay
+          SaudaGo Pay
         </span>
-        <span class="tag">{{ i.t('pay.demoBank') }}</span>
+        <span class="tag">{{ i.t('pay.secureTag') }}</span>
       </header>
 
       <main class="sheet">
@@ -43,7 +43,7 @@ import { CountdownComponent } from '../shared/countdown.component';
                 @if (busy()) { <span class="spinner small" aria-hidden="true"></span> }
                 {{ i.t('pay.confirm', { sum: q.amount }) }}
               </button>
-              <p class="note">{{ i.t('pay.note') }}</p>
+              <p class="note">{{ i.t('pay.secureNote') }}</p>
             }
             @case ('paid') {
               <div class="state ok">

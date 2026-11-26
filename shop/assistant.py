@@ -60,9 +60,9 @@ STOP = {"the", "and", "for", "with", "что", "для", "как", "мне", "п
 # ------------------------------------------------------------------ answers
 TEXT = {
     "greeting": {
-        "en": "Hi! I'm the Sauda assistant. I can find products (for example \"headphones under $150\") and answer questions about delivery, payment and refunds.",
-        "ru": "Привет! Я помощник Sauda. Могу подобрать товары (например, «наушники до 150$») и ответить на вопросы о доставке, оплате и возврате.",
-        "kk": "Сәлем! Мен Sauda көмекшісімін. Тауар таңдап бере аламын (мысалы, «құлаққап 150$ дейін») және жеткізу, төлем, қайтару туралы сұрақтарға жауап беремін.",
+        "en": "Hi! I'm the SaudaGo assistant. I can find products (for example \"headphones under $150\") and answer questions about delivery, payment and refunds.",
+        "ru": "Привет! Я помощник SaudaGo. Могу подобрать товары (например, «наушники до 150$») и ответить на вопросы о доставке, оплате и возврате.",
+        "kk": "Сәлем! Мен SaudaGo көмекшісімін. Тауар таңдап бере аламын (мысалы, «құлаққап 150$ дейін») және жеткізу, төлем, қайтару туралы сұрақтарға жауап беремін.",
     },
     "thanks": {
         "en": "You're welcome! Ask me anything else about the shop.",

@@ -48,6 +48,10 @@ Django's user + our fields. The password column stores only a HASH
 - **CHECK** `role IN ('customer', 'manager', 'admin')` — user_role_valid
 - **CHECK** `preferred_language IN ('en', 'ru', 'kk')` — user_language_valid
 - **CHECK** `preferred_currency IN ('USD', 'KZT', 'EUR', 'RUB')` — user_currency_valid
+- **UNIQUE** () — user_username_ci_unique
+- **UNIQUE** () — user_email_ci_unique
+- **UNIQUE** (phone) WHERE NOT (phone = '') — user_phone_unique
+- **CHECK** `phone = '' OR phone ~ '^\+[0-9]{7,15}$'` — user_phone_format
 
 ## telegram_accounts
 

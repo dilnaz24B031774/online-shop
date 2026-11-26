@@ -37,9 +37,9 @@
 
 <header class="head">
   <div class="container head-in">
-    <a routerLink="/" class="logo" aria-label="Sauda — home">
-      <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#155A45"/><path d="M20 32V21M20 21C20 11 9 8 7 16c-1 5 5 6 6 2M20 21c0-10 11-13 13-5 1 5-5 6-6 2" fill="none" stroke="#F6A623" stroke-width="3" stroke-linecap="round"/></svg>
-      <span>Sauda</span>
+    <a routerLink="/" class="logo" aria-label="SaudaGo">
+      <img class="logo-img word-dark" src="brand/saudago-dark.png" alt="SaudaGo — online shop" />
+      <img class="logo-img word-light" src="brand/saudago-light.png" alt="SaudaGo — online shop" />
     </a>
 
     <form class="search" role="search" (ngSubmit)="search()">
@@ -130,10 +130,9 @@
 <footer class="foot">
   <div class="container foot-grid">
     <div class="about">
-      <span class="logo light">
-        <svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#F6A623"/><path d="M20 32V21M20 21C20 11 9 8 7 16c-1 5 5 6 6 2M20 21c0-10 11-13 13-5 1 5-5 6-6 2" fill="none" stroke="#0E3B2E" stroke-width="3" stroke-linecap="round"/></svg>
-        <span>Sauda</span>
-      </span>
+      <a routerLink="/" class="logo light" aria-label="SaudaGo">
+        <img class="logo-img" src="brand/saudago-light.png" alt="SaudaGo — online shop" />
+      </a>
       <p>{{ i.t('footer.about') }}</p>
     </div>
     <div>
@@ -159,7 +158,7 @@
     </div>
   </div>
   <div class="container foot-bottom">
-    <span>© {{ year }} Sauda</span>
+    <span>© {{ year }} SaudaGo</span>
     <span>{{ i.t('footer.text') }}</span>
   </div>
 </footer>

@@ -1,11 +1,11 @@
 {% load static %}
 <!doctype html><html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
-<title>{% block title %}Панель управления{% endblock %} · Sauda</title><link rel="stylesheet" href="{% static 'shop/staff.css' %}">
+<title>{% block title %}Панель управления{% endblock %} · SaudaGo</title><link rel="stylesheet" href="{% static 'shop/staff.css' %}">
 </head><body>
 <a class="skip" href="#content">К содержимому</a>
 <aside class="sidebar">
-  <a class="brand" href="{% url 'staff_dashboard' %}" aria-label="Sauda — обзор магазина"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#f5bd63"/><path d="M20 32V21M20 21C20 11 9 8 7 16c-1 5 5 6 6 2M20 21c0-10 11-13 13-5 1 5-5 6-6 2" fill="none" stroke="#103d31" stroke-width="2.7" stroke-linecap="round"/></svg>Sauda<span style="color:#f5bd63">.</span></a>
+  <a class="brand" href="{% url 'staff_dashboard' %}" aria-label="SaudaGo — обзор магазина"><svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#f5bd63"/><path d="M20 32V21M20 21C20 11 9 8 7 16c-1 5 5 6 6 2M20 21c0-10 11-13 13-5 1 5-5 6-6 2" fill="none" stroke="#103d31" stroke-width="2.7" stroke-linecap="round"/></svg>SaudaGo<span style="color:#f5bd63">.</span></a>
   <p class="sidebar-caption">Управление вашим магазином</p><p class="nav-label">Рабочее пространство</p>
   <nav class="nav" aria-label="Разделы магазина">
     <a href="{% url 'staff_dashboard' %}" {% if active_section == 'dashboard' %}class="active" aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Обзор</a>
@@ -20,5 +20,5 @@
   <div class="sidebar-bottom"><nav class="nav" aria-label="Дополнительно"><a href="{% url 'admin:index' %}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="m9 3-1 3-3 1 1 3-2 2 2 2-1 3 3 1 1 3h6l1-3 3-1-1-3 2-2-2-2 1-3-3-1-1-3H9Z"/></svg>Все разделы и настройки</a><a href="http://localhost:4200/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M21 3 11 13M10 4H4v16h16v-6"/></svg>Открыть магазин</a></nav><p class="sidebar-note">Всё для ежедневной работы.</p></div>
 </aside>
 <div class="workspace"><header class="topbar"><span class="topbar-title">{% if request.user.role == 'manager' %}Панель менеджера{% else %}Панель администратора{% endif %}</span><div class="account"><span class="avatar" aria-hidden="true">{{ request.user.username|first|upper }}</span><span class="account-name">{{ request.user.get_short_name|default:request.user.username }}</span><form method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<input type="hidden" name="next" value="/admin/login/?next=/staff/"><button class="logout" type="submit">Выйти</button></form></div></header>
-  <main class="content" id="content">{% if messages %}<div aria-live="polite">{% for message in messages %}<div class="message {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}<p class="footer-note">Sauda · Панель управления магазином</p></main>
+  <main class="content" id="content">{% if messages %}<div aria-live="polite">{% for message in messages %}<div class="message {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}</div>{% endif %}{% block content %}{% endblock %}<p class="footer-note">SaudaGo · Панель управления магазином</p></main>
 </div></body></html>

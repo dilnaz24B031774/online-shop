@@ -20,8 +20,8 @@
   <div>
     <p class="eyebrow">Отчёт менеджера</p>
     <h1>Продажи и склад</h1>
-    <p class="intro">Считаются только оплаченные заказы, возвраты уже вычтены. {% if demo %}Демо-заказы включены.{% else %}Демо-заказы из seed_shop не учитываются — только реальные покупки.{% endif %}</p>
-    <a class="demo-toggle" href="?period={{ period }}&threshold={{ threshold }}{% if not demo %}&demo=1{% endif %}">{% if demo %}Скрыть демо-заказы{% else %}Показать вместе с демо-заказами{% endif %}</a>
+    <p class="intro">Считаются только оплаченные заказы, возвраты уже вычтены. {% if demo %}Тестовые заказы включены.{% else %}Тестовые заказы не учитываются.{% endif %}</p>
+    <a class="demo-toggle" href="?period={{ period }}&threshold={{ threshold }}{% if not demo %}&demo=1{% endif %}">{% if demo %}Скрыть тестовые заказы{% else %}Показать вместе с тестовыми заказами{% endif %}</a>
   </div>
   <nav class="period" aria-label="Период">
     {% for value, label in periods %}

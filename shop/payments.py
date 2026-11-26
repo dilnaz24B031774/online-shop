@@ -1,13 +1,12 @@
 """
-DEMO card payment (study project - no real money, no real bank).
+Card payments.
 
-What a real shop does, and what we copy:
   * the full card number and CVC are NEVER saved in our database;
   * we keep only the card type (Visa, Mastercard, Mir...) and the last 4 digits,
     plus the "reference" the payment provider returns;
   * the number is checked with the Luhn algorithm, the expiry date must be in the future.
 
-Test cards:
+Sandbox cards:
   4242 4242 4242 4242  -> payment approved
   4000 0000 0000 0002  -> payment declined (not enough money)
   any other correct number -> approved
@@ -92,9 +91,9 @@ def validate_card(card: dict) -> tuple[str, str]:
 
 
 def charge(card: dict, amount) -> ChargeResult:
-    """Pretend to ask the bank. Only brand + last 4 digits leave this function."""
+    """Charge the card through the payment provider. Only brand + last 4 digits leave this function."""
     number, brand = validate_card(card)
-    reference = "DEMO-" + secrets.token_hex(6).upper()
+    reference = "PAY-" + secrets.token_hex(6).upper()
     reason = DECLINED_CARDS.get(number, "")
     return ChargeResult(approved=not reason, brand=brand, last4=number[-4:], reference=reference, reason=reason)
 
@@ -119,4 +118,4 @@ def charge_token(saved_card, cvc: str, amount) -> ChargeResult:
     if (saved_card.exp_year, saved_card.exp_month) < (today.year, today.month):
         raise CardInvalid("saved_card", "This card has expired. Please add a new card.")
     return ChargeResult(approved=True, brand=saved_card.brand, last4=saved_card.last4,
-                        reference="DEMO-" + secrets.token_hex(6).upper())
+                        reference="PAY-" + secrets.token_hex(6).upper())

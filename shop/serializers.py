@@ -10,6 +10,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
+from .accounts import UsernameError, check_username, display_name, normalize_phone
 from .models import (
     Address, CartItem, Category, City, Notification, Order, OrderItem, Product, Refund, Review, SavedCard, User,
 )
@@ -41,12 +42,16 @@ class ProductSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     user_id = serializers.IntegerField(read_only=True)
+    author = serializers.SerializerMethodField()
     photos = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ["id", "user_id", "username", "rating", "comment", "created_at", "photos"]
-        read_only_fields = ["id", "user_id", "username", "created_at", "photos"]
+        fields = ["id", "user_id", "username", "author", "rating", "comment", "created_at", "photos"]
+        read_only_fields = ["id", "user_id", "username", "author", "created_at", "photos"]
+
+    def get_author(self, review):
+        return display_name(review.user)
 
     def get_photos(self, review):
         # relative address (/media/...): works on localhost, in Wi-Fi and through a tunnel link
@@ -87,20 +92,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "email", "first_name", "last_name", "phone",
+        fields = ["id", "customer_number", "username", "email", "first_name", "last_name", "phone",
                   "role", "preferred_language", "preferred_currency", "city", "city_id"]
-        read_only_fields = ["id", "role"]
+        read_only_fields = ["id", "customer_number", "role"]
 
-    # Accept common phone formatting, but save a consistent digit-only value.
+    customer_number = serializers.IntegerField(read_only=True)
     phone = serializers.CharField(max_length=40, required=False, allow_blank=True)
 
     def validate_username(self, value):
-        others = User.objects.filter(username__iexact=value)
-        if self.instance:
-            others = others.exclude(pk=self.instance.pk)
-        if others.exists():
-            raise serializers.ValidationError("This username is already taken.")
-        return value
+        if self.instance and value == self.instance.username:
+            return value
+        try:
+            return check_username(value, exclude_pk=self.instance.pk if self.instance else None)
+        except UsernameError as e:
+            raise serializers.ValidationError(str(e))
 
     def validate_email(self, value):
         others = User.objects.filter(email__iexact=value)
@@ -111,14 +116,16 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
-        if not value:
-            return ""
-        if not re.fullmatch(r"\+?[0-9 ()-]+", value):
+        try:
+            phone = normalize_phone(value)
+        except ValueError:
             raise serializers.ValidationError("Enter a phone number with 7 to 15 digits.")
-        digits = re.sub(r"[^0-9]", "", value)
-        if not 7 <= len(digits) <= 15:
-            raise serializers.ValidationError("Enter a phone number with 7 to 15 digits.")
-        return ("+" if value.startswith("+") else "") + digits
+        others = User.objects.filter(phone=phone)
+        if self.instance:
+            others = others.exclude(pk=self.instance.pk)
+        if phone and others.exists():
+            raise serializers.ValidationError("This phone number is already used by another account.")
+        return phone
 
     def _validate_name(self, value):
         if any(unicodedata.category(char).startswith("C") for char in value):
@@ -179,9 +186,10 @@ class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
 
     def validate_username(self, value):
-        if User.objects.filter(username__iexact=value).exists():
-            raise serializers.ValidationError("This username is already taken.")
-        return value
+        try:
+            return check_username(value)
+        except UsernameError as e:
+            raise serializers.ValidationError(str(e))
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():

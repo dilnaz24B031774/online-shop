@@ -16,7 +16,7 @@ type Kind = 'hits' | 'new' | 'trends';
     <div class="container page">
       <header class="top-head">
         <div>
-          <p class="eyebrow">Sauda</p>
+          <p class="eyebrow">SaudaGo</p>
           <h1>{{ i.t('tp.title') }}</h1>
           <p class="lead">{{ i.t('tp.lead') }}</p>
         </div>

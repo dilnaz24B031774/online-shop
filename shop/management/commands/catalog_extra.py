@@ -122,3 +122,12 @@ GALLERIES = {
     'SP-GLOVE': ['https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/1.webp', 'https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/2.webp', 'https://cdn.dummyjson.com/product-images/sports-accessories/baseball-glove/3.webp'],
     'EL-CABLE-01': ['https://cdn.dummyjson.com/product-images/mobile-accessories/apple-iphone-charger/1.webp', 'https://cdn.dummyjson.com/product-images/mobile-accessories/apple-iphone-charger/2.webp'],
 }
+
+# products without a photo from the catalogue source: own pictures inside the website (frontend/public/catalog)
+LOCAL_PHOTOS = {
+    "ST-NOTE-A5": "/catalog/st-note-a5.jpg",
+    "ST-PEN-10": "/catalog/st-pen-10.jpg",
+    "BK-DB-SYS": "/catalog/bk-db-sys.jpg",
+    "EL-MOUSE-01": "/catalog/el-mouse-01.jpg",
+    "HM-BOTTLE": "/catalog/hm-bottle.jpg",
+}

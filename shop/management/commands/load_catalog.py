@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from shop.models import Category, Product, ProductImage
-from .catalog_extra import GALLERIES, MOVES, NEW_CATEGORIES, NEW_PRODUCTS
+from .catalog_extra import GALLERIES, LOCAL_PHOTOS, MOVES, NEW_CATEGORIES, NEW_PRODUCTS
 from .descriptions import DESCRIPTIONS
 from .seed_shop import CATEGORIES as BASE_CATEGORIES
 
@@ -53,6 +53,9 @@ class Command(BaseCommand):
                     ProductImage.objects.create(product=product, url=url, position=start)
                     start += 1
                     photos_added += 1
+
+        for sku, path in LOCAL_PHOTOS.items():
+            photos_added += Product.objects.filter(sku=sku, image_url="").update(image_url=path)
 
         filled = 0
         for product in Product.objects.filter(sku__in=DESCRIPTIONS.keys()):

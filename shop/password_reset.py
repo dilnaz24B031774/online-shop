@@ -143,7 +143,7 @@ def request_reset(request):
             if not form.is_valid():
                 return _response(dict(form.errors), status=400)
             form.save(
-                domain_override="Sauda",
+                domain_override="SaudaGo",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 subject_template_name="shop/password_reset_subject.txt",
                 email_template_name="shop/password_reset_email.txt",

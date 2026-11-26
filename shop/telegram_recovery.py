@@ -133,10 +133,10 @@ def unlink(request):
 
 def _code_message(code, language):
     if language == "ru":
-        return f"Sauda: код восстановления пароля — {code}.\nДействует 10 минут. Введите его на сайте магазина. Никому не сообщайте код. Если вы не запрашивали сброс пароля, проигнорируйте сообщение."
+        return f"SaudaGo: код восстановления пароля — {code}.\nДействует 10 минут. Введите его на сайте магазина. Никому не сообщайте код. Если вы не запрашивали сброс пароля, проигнорируйте сообщение."
     if language == "kk":
-        return f"Sauda: құпиясөзді қалпына келтіру коды — {code}.\n10 минут жарамды. Кодты дүкен сайтында енгізіңіз. Кодты ешкімге бермеңіз. Сұрауды сіз жібермесеңіз, хабарламаны елемеңіз."
-    return f"Sauda password recovery code: {code}.\nValid for 10 minutes. Enter it on the shop website. Do not share it. If you did not request a reset, ignore this message."
+        return f"SaudaGo: құпиясөзді қалпына келтіру коды — {code}.\n10 минут жарамды. Кодты дүкен сайтында енгізіңіз. Кодты ешкімге бермеңіз. Сұрауды сіз жібермесеңіз, хабарламаны елемеңіз."
+    return f"SaudaGo password recovery code: {code}.\nValid for 10 minutes. Enter it on the shop website. Do not share it. If you did not request a reset, ignore this message."
 
 
 @api_view(["POST"])
@@ -275,10 +275,10 @@ def process_update(update):
     if len(parts) == 2 and parts[1].startswith("link_") and NONCE.fullmatch(parts[1][5:]):
         username = sender.get("username", "")
         success = _consume_link(parts[1][5:], chat_id, username if isinstance(username, str) else "")
-        reply = ("Telegram привязан к вашему аккаунту Sauda. Теперь вы можете получать здесь коды восстановления пароля."
-                 if success else "Ссылка привязки недействительна или уже использована. Создайте новую в настройках аккаунта Sauda. Если Telegram уже привязан, сначала отключите его в настройках.")
+        reply = ("Telegram привязан к вашему аккаунту SaudaGo. Теперь вы можете получать здесь коды восстановления пароля."
+                 if success else "Ссылка привязки недействительна или уже использована. Создайте новую в настройках аккаунта SaudaGo. Если Telegram уже привязан, сначала отключите его в настройках.")
     else:
-        reply = "Бот восстановления пароля Sauda. Сначала войдите в магазин и привяжите Telegram в настройках аккаунта. Затем используйте «Забыли пароль?» на сайте — код придёт в этот чат."
+        reply = "Бот восстановления пароля SaudaGo. Сначала войдите в магазин и привяжите Telegram в настройках аккаунта. Затем используйте «Забыли пароль?» на сайте — код придёт в этот чат."
     try:
         telegram_client.send_message(chat_id, reply)
     except telegram_client.TelegramUnavailable:

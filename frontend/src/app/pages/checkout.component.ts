@@ -94,7 +94,7 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
           }
           @if (o.payment_method === 'bank_transfer') {
             <dl class="requisites">
-              <div><dt>{{ i.t('transfer.receiver') }}</dt><dd>ТОО «Sauda» (demo)</dd></div>
+              <div><dt>{{ i.t('transfer.receiver') }}</dt><dd>ТОО «SaudaGo»</dd></div>
               <div><dt>IBAN</dt><dd>KZ00 0000 0000 0000 0000</dd></div>
               <div><dt>{{ i.t('transfer.amount') }}</dt><dd>{{ money.format(o.total_amount) }}</dd></div>
               <div><dt>{{ i.t('transfer.purpose') }}</dt><dd>{{ i.t('transfer.purposeText', { n: o.id }) }}</dd></div>
@@ -226,7 +226,6 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
                       <small>{{ i.t('saved.saveHint') }}</small>
                     </span>
                   </label>
-                  <p class="demo">{{ i.t('card.demo') }} <code>4242 4242 4242 4242</code> · {{ i.t('card.demoDecline') }} <code>4000 0000 0000 0002</code></p>
                 </div>
               } @else if (method === 'qr') {
                 <div class="info-box">
@@ -415,8 +414,6 @@ import { Address, CardInput, Order, PromoCheck, SavedCard } from '../core/models
     .card-fields .bad input { border-color: var(--red); box-shadow: 0 0 0 3px rgba(200, 60, 50, .12); }
     .safe { grid-column: 1 / -1; display: flex; gap: .5rem; align-items: center; margin: 0; font-size: .84rem; color: var(--green-700); }
     .safe svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; flex-shrink: 0; }
-    .demo { grid-column: 1 / -1; margin: 0; font-size: .8rem; color: var(--ink-soft); }
-    .demo code { background: var(--soft); padding: .1em .4em; border-radius: 4px; }
     .info-box { margin-top: 1.2rem; background: var(--green-50); border-radius: 12px; padding: 1rem 1.2rem; font-size: .92rem; }
     .info-box p { margin: .3rem 0 0; }
     .requisites { display: grid; gap: .5rem; margin: 1rem auto 1.4rem; max-width: 420px; text-align: left; background: var(--soft); border-radius: 12px; padding: 1rem 1.2rem; }

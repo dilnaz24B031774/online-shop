@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from .accounts import USERNAME_MAX, UsernameError, check_username, resolve_login, suggest_usernames
 from .login_security import (
     SecurityRateLimited, get_login_state, issue_challenge, login_attempt,
     record_login_failure, record_login_success, verify_challenge,
@@ -40,7 +41,8 @@ def _rejected(state, *, challenge=False):
 def login(request):
     payload = request.data if isinstance(request.data, Mapping) else {}
     raw_username = payload.get("username", "")
-    username = raw_username.strip() if isinstance(raw_username, str) else ""
+    # the customer may type the username in any letter case or the e-mail
+    username = resolve_login(raw_username) if isinstance(raw_username, str) and len(raw_username) <= 254 else ""
     password = payload.get("password", "")
     with login_attempt(request, username):
         state = get_login_state(request, username)
@@ -84,3 +86,19 @@ def challenge(request):
             "code": "challenge_rate_limited", "detail": error.detail,
             "retry_after": error.retry_after,
         }, status=429, retry_after=error.retry_after)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def username_check(request):
+    """GET /api/auth/username-check/?username=aigerim -> is it free + free variants."""
+    value = request.query_params.get("username", "")[:USERNAME_MAX + 20]
+    own = request.user.pk if request.user.is_authenticated else None
+    try:
+        check_username(value, exclude_pk=own)
+        return _response({"available": True})
+    except UsernameError as e:
+        body = {"available": False, "code": e.code, "detail": str(e)}
+        if e.code in ("taken", "reserved"):
+            body["suggestions"] = suggest_usernames(value)
+        return _response(body)

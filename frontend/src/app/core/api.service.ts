@@ -11,6 +11,13 @@ import {
  *  (proxy.conf.json). So the site works the same on localhost, in Wi-Fi and through a tunnel link. */
 export const API_URL = '/api';
 
+export interface UsernameCheck {
+  available: boolean;
+  code?: 'length' | 'format' | 'reserved' | 'taken';
+  detail?: string;
+  suggestions?: string[];
+}
+
 export interface ProductQuery {
   q?: string; category?: string | number; sort?: string;
   brand?: string; min_price?: string | number; max_price?: string | number;
@@ -146,6 +153,10 @@ export class ApiService {
     return this.http.get<User>(`${API_URL}/me/`);
   }
 
+  usernameCheck(username: string): Observable<UsernameCheck> {
+    return this.http.get<UsernameCheck>(`${API_URL}/auth/username-check/`, { params: { username } });
+  }
+
   cities(): Observable<City[]> {
     return this.http.get<City[]>(`${API_URL}/cities/`);
   }
@@ -236,7 +247,7 @@ export class ApiService {
     return this.http.post<QrInfo>(`${API_URL}/qr/${token}/pay/`, {});
   }
 
-  /** demo: "I have paid in my bank app" */
+  /** "I have paid in my bank app" */
   payQr(orderId: number): Observable<Order> {
     return this.http.post<Order>(`${API_URL}/orders/${orderId}/pay-qr/`, {});
   }

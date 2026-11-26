@@ -28,6 +28,9 @@ import { OrdersComponent } from './orders.component';
           <span class="avatar">{{ initial() }}</span>
           <strong>{{ auth.user()?.first_name || auth.user()?.username }}</strong>
           <span class="muted">{{ auth.user()?.email }}</span>
+          @if (auth.user()?.customer_number; as no) {
+            <span class="cust-no" [attr.title]="i.t('acc.customerNoHint')">{{ i.t('acc.customerNo') }} {{ no }}</span>
+          }
 
           <a routerLink="/profile" [queryParams]="{ tab: 'profile' }" class="btn btn-ghost btn-block"
              [class.on]="view() === 'profile'">{{ i.t('profile.tabProfile') }}</a>
@@ -107,6 +110,8 @@ import { OrdersComponent } from './orders.component';
     </div>
   `,
   styles: [`
+    .cust-no { display: inline-block; margin: .1rem 0 .4rem; padding: .2em .7em; border-radius: 999px; background: var(--soft);
+               color: var(--muted); font-size: .78rem; font-weight: 600; letter-spacing: .02em; }
     .layout { display: grid; grid-template-columns: 280px 1fr; gap: 1.6rem; align-items: start; }
     .me { display: flex; flex-direction: column; align-items: center; gap: .5rem; text-align: center; }
     .avatar {

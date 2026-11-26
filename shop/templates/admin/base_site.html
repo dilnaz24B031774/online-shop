@@ -1,6 +1,6 @@
 {% extends 'admin/base.html' %}
 {% load static %}
-{% block title %}{{ title }} · Sauda{% endblock %}
+{% block title %}{{ title }} · SaudaGo{% endblock %}
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'shop/admin.css' %}">{% endblock %}
-{% block branding %}<div id="site-name"><a href="{% url 'staff_dashboard' %}">Sauda<span class="sauda-dot">.</span> <span class="sauda-admin-label">Управление магазином</span></a></div>{% endblock %}
+{% block branding %}<div id="site-name"><a href="{% url 'staff_dashboard' %}">SaudaGo<span class="sauda-dot">.</span> <span class="sauda-admin-label">Управление магазином</span></a></div>{% endblock %}
 {% block nav-global %}{% if user.is_active and user.is_staff %}<a class="sauda-home" href="{% url 'staff_dashboard' %}">← Панель управления</a>{% endif %}{% endblock %}

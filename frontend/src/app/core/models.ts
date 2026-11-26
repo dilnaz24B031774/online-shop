@@ -36,6 +36,7 @@ export interface Review {
   rating: number;
   comment: string;
   created_at: string;
+  author?: string;     // "Aigerim K."
   photos?: string[];   // /media/reviews/... , up to 3
 }
 
@@ -60,6 +61,7 @@ export interface ProductDetail extends Product {
 
 export interface User {
   id: number;
+  customer_number?: number;
   username: string;
   email: string;
   first_name: string;
