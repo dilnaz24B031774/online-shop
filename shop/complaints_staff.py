@@ -29,7 +29,7 @@ class ComplaintResponseForm(forms.Form):
     staff_response = forms.CharField(
         label="Ответ покупателю", required=False, max_length=5000,
         widget=forms.Textarea(attrs={"rows": 7, "maxlength": 5000}),
-        help_text="Ответ будет виден покупателю в книге жалоб. Чтобы закрыть обращение, напишите ответ.",
+        help_text="Ответ будет виден покупателю в поддержке и книге обращений. Чтобы закрыть обращение, напишите ответ.",
     )
 
     def clean(self):
@@ -85,7 +85,7 @@ def complaint_detail(request, pk):
             complaint.save(update_fields=[
                 "status", "staff_response", "responded_by", "replied_at", "updated_at",
             ])
-            messages.success(request, "Обращение обновлено. Ответ доступен покупателю в книге жалоб.")
+            messages.success(request, "Обращение обновлено. Ответ доступен покупателю в поддержке и книге обращений.")
             return redirect("staff_complaint_detail", pk=complaint.pk)
     return render(request, "shop/staff_complaint_detail.html", {
         "complaint": complaint, "form": form, "can_respond": can_respond,

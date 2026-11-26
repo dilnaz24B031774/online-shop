@@ -1,7 +1,7 @@
 {% extends 'shop/staff_base.html' %}
-{% block title %}Книга жалоб{% endblock %}
+{% block title %}Поддержка и обращения{% endblock %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">Обращения покупателей</p><h1>Книга жалоб</h1><p class="intro">Просматривайте обращения, отвечайте покупателям и отмечайте решённые вопросы.</p></div></div>
+<div class="page-heading"><div><p class="eyebrow">Обращения покупателей</p><h1>Поддержка и обращения</h1><p class="intro">Просматривайте обращения, отвечайте покупателям и отмечайте решённые вопросы.</p></div></div>
 <section class="panel">
   <form class="filters" method="get">
     <div class="filter-field search"><label for="q">Поиск обращения</label><input id="q" name="q" value="{{ q }}" placeholder="Тема, текст или логин покупателя"></div>
@@ -14,7 +14,7 @@
       <td class="cell-main">{{ complaint.user.get_full_name|default:complaint.user.username }}<small>@{{ complaint.user.username }}</small></td>
       <td>{{ complaint.get_category_display }}</td><td>{% include 'shop/staff_complaint_status.html' with status=complaint.status %}</td>
       <td>{{ complaint.created_at|date:'d.m.Y, H:i' }}</td><td><a href="{% url 'staff_complaint_detail' complaint.pk %}">Открыть →</a></td>
-    </tr>{% empty %}<tr><td colspan="6" class="empty"><strong>Обращения не найдены</strong>{% if q or status_filter %}Измените условия поиска.{% else %}Здесь появятся жалобы, отправленные покупателями.{% endif %}</td></tr>{% endfor %}
+    </tr>{% empty %}<tr><td colspan="6" class="empty"><strong>Обращения не найдены</strong>{% if q or status_filter %}Измените условия поиска.{% else %}Здесь появятся обращения в поддержку и жалобы покупателей.{% endif %}</td></tr>{% endfor %}
   </tbody></table></div>
   {% include 'shop/staff_pagination.html' %}
 </section>

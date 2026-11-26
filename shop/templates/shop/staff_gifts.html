@@ -1,0 +1,16 @@
+{% extends 'shop/staff_base.html' %}{% block title %}Подарки{% endblock %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">Бонусная программа</p><h1>Подарки покупателям</h1>
+<p class="intro">Покупатели угощают Айсұлу и Алтая құртом и наурыз көже за оплаченные заказы и получают мерч. Ждут отправки: <strong>{{ waiting }}</strong>.</p></div>
+<nav class="period" aria-label="Фильтр"><a class="button {% if show != 'all' %}{% else %}secondary{% endif %}" href="?show=requested">Ждут отправки</a> <a class="button {% if show == 'all' %}{% else %}secondary{% endif %}" href="?show=all">Все</a></nav></div>
+<section class="panel"><div class="table-wrap"><table>
+<thead><tr><th>Подарок</th><th>Покупатель</th><th>Адрес</th><th>Запрошен</th><th>Статус</th><th></th></tr></thead><tbody>
+{% for r in rows %}<tr>
+<td class="cell-main"><strong>{{ r.name }}</strong><small>от {{ r.character }}</small></td>
+<td class="cell-main">{{ r.claim.user.get_full_name|default:r.claim.user.username }}<small>{{ r.claim.user.email }}{% if r.claim.user.phone %} · {{ r.claim.user.phone }}{% endif %}</small></td>
+<td>{{ r.claim.address }}</td>
+<td>{{ r.claim.created_at|date:'d.m.Y, H:i' }}</td>
+<td>{% if r.claim.status == 'sent' %}<span class="badge green">Отправлен {{ r.claim.sent_at|date:'d.m' }}</span>{% else %}<span class="badge pending">Ждёт отправки</span>{% endif %}</td>
+<td>{% if r.claim.status == 'requested' %}<form method="post">{% csrf_token %}<input type="hidden" name="claim" value="{{ r.claim.pk }}"><button class="button small" type="submit">Отправлен</button></form>{% endif %}</td>
+</tr>{% empty %}<tr><td colspan="6" class="empty"><strong>Запросов нет</strong>Когда покупатель откроет подарок, он появится здесь.</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

@@ -144,5 +144,7 @@ class BackupTests(TestCase):
 class NewCategoriesTests(TestCase):
     def test_load_catalog_creates_new_categories_and_moves(self):
         call_command("load_catalog", stdout=open(os.devnull, "w"))
-        for name in ("Watches", "Jewelry", "Furniture", "Phone accessories", "Auto & Moto"):
+        for name in ("Watches", "Jewelry", "Furniture", "Phone accessories"):
             self.assertTrue(Category.objects.get(name_en=name).products.exists(), name)
+        # cars and motorcycles were removed from the shop on purpose
+        self.assertFalse(Category.objects.filter(name_en="Auto & Moto").exists())

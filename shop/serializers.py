@@ -180,7 +180,7 @@ class PasswordAwareTokenRefreshSerializer(TokenRefreshSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(max_length=150)
+    username = serializers.CharField(max_length=150, validators=[User.username_validator])
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)

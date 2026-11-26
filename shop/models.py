@@ -7,6 +7,7 @@ so they work even if somebody forgets to check them in the code.
 """
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import F, Q
 from django.db.models.functions import Lower
@@ -344,6 +345,123 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.pk} ({self.status})"
+
+
+class DeliveryTracking(models.Model):
+    """Reported courier coordinates; an empty assignment never implies a GPS fix."""
+
+    class Source(models.TextChoices):
+        MANUAL = "manual", "Обновлено сотрудником"
+        GPS = "gps", "GPS-сервис"
+
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="delivery_tracking")
+    courier_name = models.CharField(max_length=120, blank=True)
+    courier_phone = models.CharField(max_length=32, blank=True)
+    courier_lat = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    courier_lng = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    destination_lat = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        validators=[MinValueValidator(-90), MaxValueValidator(90)],
+    )
+    destination_lng = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True,
+        validators=[MinValueValidator(-180), MaxValueValidator(180)],
+    )
+    eta_minutes = models.PositiveIntegerField(null=True, blank=True)
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.MANUAL)
+    position_accuracy = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0)])
+    position_updated_at = models.DateTimeField(null=True, blank=True)
+    # Raw sharing tokens are shown once and never persisted.
+    share_token_hash = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    share_expires_at = models.DateTimeField(null=True, blank=True)
+    # when the customer was told "the courier is nearby" (once per delivery)
+    near_notified_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "delivery_tracking"
+        verbose_name = "отслеживание доставки"
+        verbose_name_plural = "отслеживание доставок"
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(courier_lat__isnull=True, courier_lng__isnull=True)
+                           | Q(courier_lat__isnull=False, courier_lng__isnull=False)),
+                name="delivery_courier_coordinates_paired",
+            ),
+            models.CheckConstraint(
+                condition=(Q(destination_lat__isnull=True, destination_lng__isnull=True)
+                           | Q(destination_lat__isnull=False, destination_lng__isnull=False)),
+                name="delivery_destination_coordinates_paired",
+            ),
+            models.CheckConstraint(
+                condition=Q(courier_lat__isnull=True) | Q(courier_lat__gte=-90, courier_lat__lte=90),
+                name="delivery_courier_latitude_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(courier_lng__isnull=True) | Q(courier_lng__gte=-180, courier_lng__lte=180),
+                name="delivery_courier_longitude_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(destination_lat__isnull=True) | Q(destination_lat__gte=-90, destination_lat__lte=90),
+                name="delivery_destination_latitude_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(destination_lng__isnull=True) | Q(destination_lng__gte=-180, destination_lng__lte=180),
+                name="delivery_destination_longitude_valid",
+            ),
+            models.CheckConstraint(
+                condition=(~Q(courier_name="") | Q(courier_phone="", courier_lat__isnull=True,
+                                                   courier_lng__isnull=True, eta_minutes__isnull=True)),
+                name="delivery_position_requires_assignment",
+            ),
+            models.CheckConstraint(condition=Q(source__in=["manual", "gps"]), name="delivery_source_valid"),
+            models.CheckConstraint(
+                condition=Q(position_accuracy__isnull=True) | Q(position_accuracy__gte=0),
+                name="delivery_accuracy_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=(Q(share_token_hash__isnull=True, share_expires_at__isnull=True)
+                           | Q(share_token_hash__isnull=False, share_expires_at__isnull=False)),
+                name="delivery_share_expiry_paired",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.courier_name = self.courier_name.strip()
+        self.courier_phone = self.courier_phone.strip()
+        errors = {}
+        for prefix in ("courier", "destination"):
+            lat, lng = getattr(self, f"{prefix}_lat"), getattr(self, f"{prefix}_lng")
+            if (lat is None) != (lng is None):
+                errors[f"{prefix}_lat"] = "Укажите широту и долготу вместе или очистите оба поля."
+        if not self.courier_name and (
+            self.courier_phone or self.courier_lat is not None or self.courier_lng is not None
+            or self.eta_minutes is not None
+        ):
+            errors["courier_name"] = "Сначала укажите имя назначенного курьера."
+        if self.courier_phone:
+            import re
+            digits = re.sub(r"[^0-9]", "", self.courier_phone)
+            if not re.fullmatch(r"\+?[0-9 ()-]+", self.courier_phone) or not 7 <= len(digits) <= 15:
+                errors["courier_phone"] = "Укажите телефон: от 7 до 15 цифр."
+            else:
+                self.courier_phone = ("+" if self.courier_phone.startswith("+") else "") + digits
+        if self.position_accuracy is not None:
+            import math
+            if not math.isfinite(self.position_accuracy):
+                errors["position_accuracy"] = "Точность должна быть конечным числом."
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"Доставка заказа №{self.order_id}"
 
 
 # 7. ORDER ITEM - bridge table, solves Order <-> Product M:N
@@ -736,3 +854,53 @@ class Complaint(models.Model):
 
     def __str__(self):
         return f"#{self.pk} {self.subject}"
+
+
+# ---------- bonus programme: treat the mascots, collect merch ----------
+
+class BonusFeeding(models.Model):
+    """The customer gave earned treats (kurt / Nauryz kozhe) to one of the two mascots."""
+    class Character(models.TextChoices):
+        AISULU = "aisulu", "Айсұлу"
+        ALTAI = "altai", "Алтай"
+
+    class Treat(models.TextChoices):
+        KURT = "kurt", "Құрт"
+        KOZHE = "kozhe", "Наурыз көже"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bonus_feedings")
+    character = models.CharField(max_length=10, choices=Character.choices)
+    treat = models.CharField(max_length=10, choices=Treat.choices)
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "bonus_feedings"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(condition=Q(character__in=["aisulu", "altai"]), name="bonus_character_valid"),
+            models.CheckConstraint(condition=Q(treat__in=["kurt", "kozhe"]), name="bonus_treat_valid"),
+            models.CheckConstraint(condition=Q(quantity__gte=1), name="bonus_quantity_positive"),
+        ]
+
+
+class GiftClaim(models.Model):
+    """A merch gift the customer unlocked and asked for; staff send it out."""
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Ждёт отправки"
+        SENT = "sent", "Отправлен"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="gift_claims")
+    gift = models.CharField(max_length=40)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    address = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "gift_claims"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "gift"], name="gift_claim_once_per_user"),
+            models.CheckConstraint(condition=Q(status__in=["requested", "sent"]), name="gift_claim_status_valid"),
+        ]

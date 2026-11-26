@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django import forms
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, ProtectedError, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods, require_safe
 
 from .models import Category, Order, OrderItem, Product, User
+from .purchase_export import can_export
 from .roles import ROLE_CHOICES
 from .services import (
     STAFF_CAN_CANCEL, CancelNotAllowedError, OrderTransitionError, cancel_order,
@@ -18,6 +19,10 @@ from .services import (
 )
 from .services import (
     REFUNDABLE_STATUSES, PaymentExpiredError, RefundError, expire_unpaid_orders, refund_item,
+)
+from .tracking import (
+    DeliveryTrackingForm, clear_assignment, issue_sharing_token, revoke_sharing_token,
+    sharing_url, tracking_payload, update_tracking,
 )
 
 
@@ -240,6 +245,7 @@ def orders(request):
     return render(request, "shop/staff_orders.html", {
         "page_obj": _page(request, queryset), "q": q, "status_filter": status_filter,
         "status_choices": STATUS_CHOICES, "active_section": "orders",
+        "can_export": can_export(request.user),
     })
 
 
@@ -250,6 +256,9 @@ def order_detail(request, pk):
     order = get_object_or_404(Order.objects.select_related("user", "payment"), pk=pk)
     can_change = request.user.has_perm("shop.change_order")
     error = ""
+    tracking_form = None
+    courier_link = ""
+    courier_link_expires = None
     if request.method == "POST":
         if not can_change:
             raise PermissionDenied
@@ -261,6 +270,23 @@ def order_detail(request, pk):
                 confirm_payment(order)
             elif action in ("ship", "deliver"):
                 fulfill_order(order, Order.Status.SHIPPED if action == "ship" else Order.Status.DELIVERED)
+            elif action == "update_tracking":
+                tracking_form = update_tracking(order, request.POST)
+                if tracking_form.errors:
+                    error = "Проверьте данные курьера и координаты доставки."
+                elif tracking_form.geocoded:
+                    messages.info(request, "Точка доставки найдена на карте по адресу заказа. "
+                                           "Проверьте её и при необходимости поправьте координаты.")
+                elif tracking_form.geocoded is False:
+                    messages.warning(request, "Адрес не удалось найти на карте автоматически. "
+                                              "Укажите координаты точки доставки вручную.")
+            elif action == "clear_tracking":
+                clear_assignment(order)
+            elif action == "share_courier_location":
+                raw_token, courier_link_expires = issue_sharing_token(order)
+                courier_link = sharing_url(request, raw_token)
+            elif action == "revoke_courier_location":
+                revoke_sharing_token(order)
             elif action == "refund":
                 try:
                     qty = int(request.POST.get("quantity", "0"))
@@ -282,11 +308,16 @@ def order_detail(request, pk):
             error = "Срок оплаты истёк — заказ уже отменён автоматически."
         except (CancelNotAllowedError, OrderTransitionError):
             error = "Статус заказа уже изменился или это действие недоступно. Обновите страницу."
-        if not error:
+        except ValidationError as exc:
+            error = " ".join(exc.messages)
+        if not error and not courier_link:
             messages.success(request, f"Заказ №{order.pk} обновлён.")
             return redirect("staff_order_detail", pk=order.pk)
         order.refresh_from_db()
     payment = getattr(order, "payment", None)
+    delivery = getattr(order, "delivery_tracking", None)
+    if tracking_form is None:
+        tracking_form = DeliveryTrackingForm(instance=delivery)
     return render(request, "shop/staff_order_detail.html", {
         "order": order, "items": order.items.select_related("product"),
         "can_ship": can_change and (order.status == Order.Status.PAID or (
@@ -299,6 +330,12 @@ def order_detail(request, pk):
         "can_refund": can_change and order.status in REFUNDABLE_STATUSES and payment is not None
                       and payment.status == "paid",
         "refunds": order.refunds.select_related("order_item__product", "created_by"),
+        "tracking_form": tracking_form, "delivery_tracking": delivery, "tracking": tracking_payload(order),
+        "can_edit_tracking": can_change and order.status not in (Order.Status.CANCELLED, Order.Status.DELIVERED),
+        "can_share_tracking": can_change and order.status == Order.Status.SHIPPED
+                              and delivery is not None and bool(delivery.courier_name.strip()),
+        "can_revoke_tracking": can_change and delivery is not None and bool(delivery.share_token_hash),
+        "courier_link": courier_link, "courier_link_expires": courier_link_expires,
         "reasons": [("defect", "Брак"), ("wrong_item", "Не тот товар"), ("changed_mind", "Передумал(а)"),
                     ("other", "Другое")],
         "error": error, "active_section": "orders",

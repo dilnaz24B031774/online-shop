@@ -1,7 +1,7 @@
 {% extends 'shop/staff_base.html' %}
 {% block title %}Обращение #{{ complaint.pk }}{% endblock %}
 {% block content %}
-<div class="page-heading"><div><p class="eyebrow">Книга жалоб</p><h1>Обращение #{{ complaint.pk }}</h1><p class="intro">{{ complaint.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_complaint_status.html' with status=complaint.status %}</p></div><a class="button secondary" href="{% url 'staff_complaints' %}">← Все обращения</a></div>
+<div class="page-heading"><div><p class="eyebrow">Поддержка покупателей</p><h1>Обращение #{{ complaint.pk }}</h1><p class="intro">{{ complaint.created_at|date:'d.m.Y, H:i' }} &nbsp; {% include 'shop/staff_complaint_status.html' with status=complaint.status %}</p></div><a class="button secondary" href="{% url 'staff_complaints' %}">← Все обращения</a></div>
 <div class="grid-two">
   <section class="panel"><div class="panel-head"><h2 style="overflow-wrap:anywhere">{{ complaint.subject }}</h2></div><div class="panel-body">
     <dl class="detail-list"><div><dt>Категория</dt><dd>{{ complaint.get_category_display }}</dd></div><div><dt>Покупатель</dt><dd>{{ complaint.user.get_full_name|default:complaint.user.username }} <span class="muted">(@{{ complaint.user.username }})</span></dd></div>
