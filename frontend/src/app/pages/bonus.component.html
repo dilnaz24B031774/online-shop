@@ -1,0 +1,102 @@
+<div class="bonus-page">
+  <div class="container">
+    <header class="bonus-hero">
+      <div class="hero-text">
+        <p class="eyebrow"><span aria-hidden="true">✦</span> {{ copy().eyebrow }}</p>
+        <h1>{{ copy().title }}</h1>
+        <p class="intro">{{ copy().intro }}</p>
+        <ol class="steps">
+          <li><span>1</span>{{ copy().step1 }}</li>
+          <li><span>2</span>{{ copy().step2 }}</li>
+          <li><span>3</span>{{ copy().step3 }}</li>
+        </ol>
+      </div>
+      <div class="hero-friends">
+        <app-mascot-3d who="both" [play]="heroPlay()" [label]="copy().names.aisulu + ', ' + copy().names.altai" />
+      </div>
+    </header>
+
+    @if (error()) { <div class="alert alert-error" role="alert">{{ error() }}</div> }
+
+    @if (loading()) {
+      <div class="panel loading" role="status">{{ copy().loading }}</div>
+    }
+    @if (!loading() && state(); as s) {
+      <section class="bag" [attr.aria-label]="copy().bag">
+        <div class="bag-title"><h2>{{ copy().bag }}</h2><p>{{ copy().earnedHint(s.rules.kurt_every, s.rules.kozhe_every) }}</p></div>
+        <div class="treat-count kurt">
+          <span class="treat-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div><strong>{{ s.available.kurt }}</strong><small>{{ copy().treats.kurt }} · {{ copy().bagHint }}</small></div>
+        </div>
+        <div class="treat-count kozhe">
+          <span class="treat-icon bowl" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M6 22h36a18 18 0 0 1-36 0Z"/><path d="M14 40h20"/><path d="M18 14c0-3 3-3 3-6M26 14c0-3 3-3 3-6" class="steam"/></svg></span>
+          <div><strong>{{ s.available.kozhe }}</strong><small>{{ copy().treats.kozhe }} · {{ copy().bagHint }}</small></div>
+        </div>
+        @if (!s.available.kurt && !s.available.kozhe && !s.earned.kurt) {
+          <a routerLink="/catalog" class="btn btn-primary bag-shop">{{ copy().shop }} →</a>
+        }
+      </section>
+
+      <div class="friends">
+        @for (c of s.characters; track c.id) {
+          <article class="friend-card" [class.altai]="c.id === 'altai'" [class.cheering]="cheer()?.id === c.id">
+            <div class="friend-top">
+              <div class="portrait">
+                <app-mascot-3d [who]="c.id" [play]="play()" [label]="copy().names[c.id]" />
+                <span class="bubble" aria-live="polite">{{ bubble(c) }}</span>
+                @if (gain(); as g) { @if (g.id === c.id && g.points > 0) {
+                  @for (k of [g.n]; track k) { <span class="gain" aria-hidden="true">+{{ g.points }}</span> }
+                } }
+              </div>
+              <div class="friend-info">
+                <h2>{{ copy().names[c.id] }}</h2>
+                <p class="role">{{ copy().roles[c.id] }}</p>
+                <p class="points"><strong>{{ c.points }}</strong> {{ copy().points }}</p>
+                <div class="meter" role="progressbar" [attr.aria-valuenow]="progress(c)" aria-valuemin="0" aria-valuemax="100">
+                  <span [style.width.%]="progress(c)"></span>
+                </div>
+                <p class="next">{{ c.next_goal === null ? copy().allDone : copy().toNext(c.next_goal - c.points) }}</p>
+                <div class="feed-buttons">
+                  @for (t of treats; track t) {
+                    <button type="button" class="feed" [class.kozhe]="t === 'kozhe'" (click)="feed(c.id, t)" [disabled]="busy() || !s.available[t]">
+                      {{ copy().give(copy().treatsShort[t]) }} <small>+{{ s.rules.points[t] }}</small>
+                    </button>
+                  }
+                  <button type="button" class="feed-all" (click)="feedAll(c.id)"
+                          [disabled]="busy() || (!s.available.kurt && !s.available.kozhe)">{{ copy().giveAll }}</button>
+                </div>
+              </div>
+            </div>
+
+            <h3>{{ copy().giftsTitle }}</h3>
+            <ul class="gifts">
+              @for (g of c.gifts; track g.code) {
+                <li [class.unlocked]="g.unlocked" [class.done]="g.status">
+                  <span class="gift-icon" aria-hidden="true">
+                    @if (g.status === 'sent') { <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg> }
+                    @else if (g.unlocked) { <svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M3 12h18M12 8S9.5 3 7 4.5 9 8 12 8Zm0 0s2.5-5 5-3.5S15 8 12 8Z"/></svg> }
+                    @else { <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> }
+                  </span>
+                  <div class="gift-text"><strong>{{ copy().gifts[g.code] }}</strong><small>{{ copy().locked(g.points) }}</small></div>
+                  @if (g.status === 'sent') { <span class="gift-state sent">{{ copy().sent }}</span> }
+                  @else if (g.status === 'requested') { <span class="gift-state">{{ copy().requested }}</span> }
+                  @else if (g.unlocked) {
+                    <button type="button" class="btn btn-primary claim" (click)="claim(g)" [disabled]="busy()">{{ copy().claim }}</button>
+                  }
+                  @if (asking() === g.code) {
+                    <form class="address-form" (ngSubmit)="sendWithAddress(g)">
+                      <label [for]="'addr-' + g.code">{{ copy().addressLabel }}</label>
+                      <input [id]="'addr-' + g.code" name="address" [(ngModel)]="address" [placeholder]="copy().addressHint" maxlength="255" autocomplete="street-address" />
+                      <div><button type="submit" class="btn btn-primary" [disabled]="busy()">{{ copy().send }}</button>
+                        <button type="button" class="btn btn-ghost" (click)="asking.set(null)">{{ copy().cancel }}</button></div>
+                    </form>
+                  }
+                </li>
+              }
+            </ul>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</div>

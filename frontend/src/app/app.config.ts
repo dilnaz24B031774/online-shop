@@ -11,6 +11,9 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' })),
     provideHttpClient(withInterceptors([authInterceptor])),
-    provideAppInitializer(() => inject(AuthService).restore()),
+    provideAppInitializer(() => {
+      if (location.pathname.replace(/\/$/, '') === '/courier') return;
+      return inject(AuthService).restore();
+    }),
   ],
 };

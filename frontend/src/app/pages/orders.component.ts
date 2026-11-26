@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
@@ -8,6 +8,7 @@ import { CurrencyService } from '../core/currency.service';
 import { Order } from '../core/models';
 import { CountdownComponent } from '../shared/countdown.component';
 import { PayLinkService } from '../core/pay-link.service';
+import { TRACKING_COPY } from '../core/tracking-copy';
 
 /**
  * The list of the user's orders.
@@ -65,6 +66,15 @@ import { PayLinkService } from '../core/pay-link.service';
                 @else if (o.payment_status) { <span class="pay-badge" [class]="'pay-badge p-' + o.payment_status">{{ i.t('status.' + o.payment_status) }}</span> }</span>
               <strong class="sum">{{ money.format(o.total_amount) }}</strong>
             </footer>
+
+            @if (o.status === 'shipped' || o.status === 'delivered') {
+              <div class="delivery-link-row">
+                <a class="btn btn-outline" [routerLink]="['/orders', o.id, 'tracking']">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v11H3zM14 10h4l3 3v4h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg>
+                  {{ deliveryCopy().trackLink }} <span aria-hidden="true">↗</span>
+                </a>
+              </div>
+            }
 
             <div class="complaint-row"><a routerLink="/complaints" [queryParams]="{ order: o.id }">{{ i.t('complaints.orderLink') }} <span aria-hidden="true">↗</span></a></div>
 
@@ -158,6 +168,9 @@ import { PayLinkService } from '../core/pay-link.service';
     .p-paid { background: #e7f3e9; color: #267247; } .p-pending { background: #fff3dc; color: #956111; }
     .p-failed { background: #fbecea; color: #aa4942; } .p-refunded { background: #e8eff9; color: #466b9b; }
     .order { margin-bottom: 1.2rem; }
+    .delivery-link-row { margin-top: 1rem; }
+    .delivery-link-row a { display: inline-flex; align-items: center; gap: .55rem; font-size: .85rem; }
+    .delivery-link-row svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
     .complaint-row { margin-top: .8rem; font-size: .85rem; }
     .complaint-row a { display: inline-flex; align-items: center; gap: .4rem; }
     header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
@@ -199,6 +212,7 @@ export class OrdersComponent implements OnInit, OnDestroy {
   private qrPoll?: ReturnType<typeof setInterval>;
 
   readonly i = inject(I18nService);
+  readonly deliveryCopy = computed(() => TRACKING_COPY[this.i.lang()]);
   readonly money = inject(CurrencyService);
   private api = inject(ApiService);
   readonly orders = signal<Order[] | null>(null);

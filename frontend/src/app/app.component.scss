@@ -114,6 +114,13 @@ main { flex: 1; }
   .foot-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 560px) {
+  /* logo and the round icons share one row instead of the icons dropping to their own line */
+  .head-in { flex-wrap: wrap; gap: .7rem .5rem; }
+  .logo span { font-size: 1.2rem; }
+  .logo svg { width: 34px; height: 34px; }
+  .actions { gap: .4rem; }
+  .cart-icon, .avatar { width: 38px; height: 38px; }
+  .actions ::ng-deep .bell { width: 38px; height: 38px; }
   .note { font-size: .78rem; }
   .search select { display: none; }
   .search button span { display: none; }

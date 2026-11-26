@@ -511,10 +511,10 @@ export class ProductComponent {
     this.fav.toggle(productId).subscribe({ error: () => {} });
   }
 
-  /** Link that opens WhatsApp: "<name> — $<price>" and the address of this product page. */
+  /** Share the product name, selected-currency price and address on WhatsApp. */
   waLink(p: ProductDetail): string {
     const url = `${this.doc.location.origin}/product/${p.id}`;
-    const text = `${this.i.pick(p)} — $${p.price}\n${url}`;
+    const text = `${this.i.pick(p)} — ${this.money.format(p.price)}\n${url}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 }

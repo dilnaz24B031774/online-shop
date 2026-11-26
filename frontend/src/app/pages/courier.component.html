@@ -1,0 +1,18 @@
+<div class="courier-page"><section class="courier-card">
+  <div class="brand">SaudaGo<span>.</span><small>{{ copy().title }}</small></div>
+  <div class="location-icon" [class.on]="sharing()" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+  <h1>{{ copy().title }}</h1><p class="lead">{{ copy().lead }}</p>
+  @if (loading()) { <p role="status">{{ copy().loading }}</p> }
+  @if (error()) { <p class="alert alert-error" role="alert">{{ errorText() }}</p> }
+  @if (session(); as delivery) {
+    <div class="delivery"><div><span>{{ copy().order }}</span><strong>#{{ delivery.order_id }}</strong></div><strong>{{ delivery.courier_name }}</strong></div>
+    <div class="sharing-state" [class.active]="sharing()" role="status"><span class="dot"></span>{{ sharing() ? copy().active : copy().paused }}</div>
+    <p class="hint">{{ sharing() ? copy().every : copy().ready }}</p>
+    @if (locating()) { <p class="hint" role="status">{{ copy().locating }}</p> }
+    @if (sentAt(); as sent) { <div class="last"><span>{{ copy().last }}<strong>{{ date(sent) }}</strong></span><span>{{ copy().accuracy }}<strong>±{{ accuracy() }} {{ copy().meters }}</strong></span></div> }
+    @if (sharing()) { <button type="button" class="btn stop" (click)="stop()">{{ copy().stop }}</button> }
+    @else { <button type="button" class="btn btn-primary" (click)="start()">{{ copy().start }}</button> }
+    <p class="privacy">{{ copy().note }}</p>
+  } @else if (!loading() && error() === 'network') { <button type="button" class="btn btn-primary" (click)="load()">{{ copy().retry }}</button> }
+  <footer><p>{{ copy().privacy }}</p><a routerLink="/support">{{ copy().help }}</a></footer>
+</section></div>

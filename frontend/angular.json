@@ -54,11 +54,13 @@
               }
             ],
             "styles": [
+              "node_modules/leaflet/dist/leaflet.css",
               "src/styles.scss",
               "src/theme.scss"
             ],
             "scripts": [],
             "allowedCommonJsDependencies": [
+              "leaflet",
               "qrcode",
               "dijkstrajs"
             ]

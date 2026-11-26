@@ -17,7 +17,22 @@ import { ProductImageComponent } from '../shared/product-image.component';
     }
 
     <!-- hero banners -->
-    <section class="container hero">
+    @if (!hasSeasonHero() && products().length) {
+      <section class="container">
+        <a class="welcome" routerLink="/catalog">
+          <div class="text">
+            <span class="tag">{{ welcome().tag }}</span>
+            <h1>{{ welcome().title }}</h1>
+            <p>{{ welcome().text }}</p>
+            <span class="btn btn-primary">{{ welcome().cta }} →</span>
+          </div>
+          <div class="welcome-pics" aria-hidden="true">
+            @for (p of welcomeProducts(); track p.id) { <div class="pic"><app-product-image [product]="p" /></div> }
+          </div>
+        </a>
+      </section>
+    }
+    <section class="container hero" [hidden]="!hasSeasonHero()">
       @if (bySku('FA-SUMDR'); as p) {
         <a class="banner big" [routerLink]="['/catalog']" [queryParams]="{ category: p.category.id }">
           <div class="text">
@@ -54,7 +69,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
     <section class="container cats">
       <div class="section-head"><h2>{{ i.t('home.categories') }}</h2></div>
       <div class="cat-row">
-        @for (c of categories(); track c.id) {
+        @for (c of shownCategories(); track c.id) {
           <a class="cat" [routerLink]="['/catalog']" [queryParams]="{ category: c.id }">
             <span class="circle">
               @if (coverOf(c); as cover) { <app-product-image [product]="cover" /> }
@@ -67,6 +82,20 @@ import { ProductImageComponent } from '../shared/product-image.component';
     </section>
 
     <!-- weekly best sellers on green -->
+    <!-- bonus programme teaser with the mascots -->
+    <section class="container">
+      <a class="bonus-teaser" routerLink="/bonus">
+        <img src="/bonus/aisulu.webp" alt="" class="mascot left" loading="lazy" />
+        <div class="teaser-text">
+          <span class="tag">{{ teaser().tag }}</span>
+          <h2>{{ teaser().title }}</h2>
+          <p>{{ teaser().text }}</p>
+          <span class="btn btn-sun">{{ teaser().cta }} →</span>
+        </div>
+        <img src="/bonus/altai.webp" alt="" class="mascot right" loading="lazy" />
+      </a>
+    </section>
+
     <section class="deals">
       <div class="container">
         <div class="deals-head">
@@ -98,7 +127,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
     </section>
 
     <!-- promo banners -->
-    <section class="container promos">
+    <section class="container promos" [hidden]="!promos().length">
       @for (promo of promos(); track promo.key) {
         <a class="promo" [class]="'promo ' + promo.tone" [routerLink]="['/catalog']" [queryParams]="{ category: promo.product.category.id }">
           <div class="text">
@@ -112,7 +141,7 @@ import { ProductImageComponent } from '../shared/product-image.component';
     </section>
 
     <!-- popular products -->
-    <section class="container popular">
+    <section class="container popular" [hidden]="!popular().length">
       <div class="section-head">
         <h2>{{ i.t('home.new') }}</h2>
         <a routerLink="/catalog" class="btn btn-ghost">{{ i.t('home.viewAll') }}</a>
@@ -131,6 +160,53 @@ import { ProductImageComponent } from '../shared/product-image.component';
     </section>
   `,
   styles: [`
+    section[hidden] { display: none !important; }
+
+    /* bonus programme teaser */
+    .bonus-teaser { position: relative; display: grid; grid-template-columns: 150px 1fr 150px; align-items: end; gap: 1.5rem;
+      margin-top: 2.4rem; padding: 1.6rem 2rem 0; border-radius: 22px; overflow: hidden; text-decoration: none !important; color: #fff;
+      background: linear-gradient(120deg, #123a6b 0%, #1c4f8c 60%, #245aa1 100%); }
+    .bonus-teaser::before { content: ''; position: absolute; inset: 0; opacity: .12; pointer-events: none;
+      background-image: radial-gradient(circle at 20px 20px, #f6c25b 2px, transparent 3px); background-size: 40px 40px; }
+    .bonus-teaser .mascot { position: relative; height: 210px; width: auto; justify-self: center; margin-bottom: -6px;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.3)); transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+    .bonus-teaser:hover .mascot.left { transform: translateY(-8px) rotate(-4deg); }
+    .bonus-teaser:hover .mascot.right { transform: translateY(-8px) rotate(4deg); }
+    .teaser-text { position: relative; align-self: center; padding-bottom: 1.6rem; text-align: center; }
+    .teaser-text .tag { background: #f6c25b; color: #123a6b; }
+    .teaser-text h2 { color: #fff; margin: .7rem 0 .4rem; font-size: clamp(1.3rem, 2.4vw, 1.9rem); }
+    .teaser-text p { color: #d9e5f5; margin: 0 auto 1rem; max-width: 52ch; }
+    @media (max-width: 720px) {
+      .bonus-teaser { grid-template-columns: 1fr 1fr; padding: 1.4rem 1.2rem 0; }
+      .teaser-text { grid-column: 1 / -1; grid-row: 1; padding-bottom: 0; }
+      .bonus-teaser .mascot { height: 160px; }
+    }
+
+    /* welcome banner (shown when the seasonal products are not in the catalogue) */
+    .welcome {
+      margin-top: 1.6rem; display: grid; grid-template-columns: 1.2fr 1fr; align-items: center; gap: 2rem;
+      padding: 2.6rem 2.8rem; border-radius: 22px; text-decoration: none !important; color: var(--text);
+      background: radial-gradient(circle at 85% 20%, rgba(246,166,35,.22), transparent 45%),
+                  linear-gradient(135deg, var(--green-50, #e3f1ea) 0%, #cfe7dc 100%);
+    }
+    .welcome .text { display: flex; flex-direction: column; align-items: flex-start; gap: .8rem; }
+    .welcome h1 { margin: 0; font-size: clamp(1.8rem, 3.2vw, 2.6rem); max-width: 16ch; color: var(--green-900); }
+    .welcome p { margin: 0; max-width: 42ch; color: var(--muted, #4a5d55); }
+    .welcome .btn { margin-top: .3rem; }
+    .welcome-pics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .welcome-pics .pic { aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.7);
+      box-shadow: 0 10px 24px rgba(22,60,46,.12); }
+    .welcome-pics .pic:nth-child(2) { transform: translateY(-14px); }
+    .welcome:hover .btn-primary { background: var(--green-900); }
+    :host-context(html[data-theme="dark"]) .welcome { background: linear-gradient(135deg, #17352b 0%, #10261f 100%); }
+    :host-context(html[data-theme="dark"]) .welcome h1 { color: #fff; }
+    :host-context(html[data-theme="dark"]) .welcome .tag { background: rgba(120,214,179,.14); }
+    :host-context(html[data-theme="dark"]) .welcome .btn-primary { color: #0f241d; }
+    :host-context(html[data-theme="dark"]) .welcome:hover .btn-primary { background: var(--green-700); }
+    @media (max-width: 860px) {
+      .welcome { grid-template-columns: 1fr; padding: 1.8rem; }
+    }
+
     /* hero */
     .hero {
       display: grid; grid-template-columns: 1.55fr 1fr; grid-template-rows: 210px 210px; gap: 18px;
@@ -285,10 +361,46 @@ export class HomeComponent implements OnInit {
     return list.map(x => ({ ...x, product: this.bySku(x.sku)! })).filter(x => x.product);
   });
 
+  readonly shownCategories = computed(() => this.categories().filter(c => (c.product_count ?? 1) > 0));
+
+  /** one product per category, so the welcome banner does not repeat the same picture */
+  readonly welcomeProducts = computed(() => {
+    const seen = new Set<number>();
+    const picked = this.products().filter(p => !seen.has(p.category.id) && seen.add(p.category.id));
+    return (picked.length >= 3 ? picked : this.products()).slice(0, 3);
+  });
+
+  readonly teaser = computed(() => ({
+    en: { tag: 'Bonus programme', title: 'Treat Aisulu and Altai — get SaudaGo merch',
+          text: 'Every paid order brings kurt and Nauryz kozhe. Feed our friends and collect stickers, mugs, caps and hoodies.',
+          cta: 'Open bonuses' },
+    ru: { tag: 'Бонусная программа', title: 'Угощайте Айсұлу и Алтая — получайте мерч SaudaGo',
+          text: 'За каждый оплаченный заказ — құрт и наурыз көже. Угощайте друзей и собирайте стикеры, кружки, кепки и худи.',
+          cta: 'К бонусам' },
+    kk: { tag: 'Бонустық бағдарлама', title: 'Айсұлу мен Алтайды сыйлаңыз — SaudaGo мерчін алыңыз',
+          text: 'Әр төленген тапсырыс үшін — құрт пен наурыз көже. Достарды сыйлап, стикер, кружка, кепка мен худи жинаңыз.',
+          cta: 'Бонустарға' },
+  }[this.i.lang()]));
+
+  readonly hasSeasonHero = computed(() => ['FA-SUMDR', 'EL-AIRPD', 'SH-AJ1'].some(sku => this.bySku(sku)));
+
+  readonly welcome = computed(() => ({
+    en: { tag: 'SaudaGo online shop', title: 'Everything you need, delivered to your door',
+          text: 'Electronics, fashion, beauty, home and kitchen goods with delivery across Kazakhstan. Track your courier on the map.',
+          cta: 'Go to catalog' },
+    ru: { tag: 'Интернет-магазин SaudaGo', title: 'Всё нужное — с доставкой до двери',
+          text: 'Электроника, одежда, красота, товары для дома и кухни с доставкой по Казахстану. Следите за курьером на карте.',
+          cta: 'В каталог' },
+    kk: { tag: 'SaudaGo интернет-дүкені', title: 'Керектің бәрі — есігіңізге дейін жеткізіледі',
+          text: 'Электроника, киім, сұлулық, үй мен ас үй тауарлары Қазақстан бойынша жеткізіледі. Курьерді картадан бақылаңыз.',
+          cta: 'Каталогқа' },
+  }[this.i.lang()]));
+
   readonly popular = computed(() => {
     const top = new Set(this.bestSellers().map(p => p.id));
+    const withImages = this.products().some(p => p.image_url);
     return this.products()
-      .filter(p => p.image_url && !top.has(p.id))
+      .filter(p => (p.image_url || !withImages) && !top.has(p.id))
       .sort((a, b) => (b.review_count - a.review_count) || (a.id - b.id))
       .slice(0, 10);
   });
