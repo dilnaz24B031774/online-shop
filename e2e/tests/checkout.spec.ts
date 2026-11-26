@@ -3,7 +3,7 @@ import {
   MOUSE, addMouseFromCatalog, cancelOrderViaApi, cartLink, clearCart, ensureAddress, loginViaUi,
 } from '../helpers';
 
-const GOOD_CARD = { number: '4242 4242 4242 4242', holder: 'AIGERIM K', expiry: '12/30', cvc: '123' };
+const GOOD_CARD = { number: '4242 4242 4242 4242', holder: 'AIGERIM K', expiry: '12/3 0', cvc: '123' };
 
 async function fillCard(page: Page, card: typeof GOOD_CARD) {
   await page.locator('#cn').fill(card.number);
